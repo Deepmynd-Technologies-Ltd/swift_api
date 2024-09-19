@@ -1,0 +1,20 @@
+# views.py
+from ninja import Router
+from authentication.schemas import GoogleTokenDTO, ResponseDTO
+from authentication.services import get_user_account, register_login, testing_login
+
+from django.conf import settings
+
+auth_router = Router(tags=["Authentication"])
+
+@auth_router.post("create-user/", response=ResponseDTO, auth=None)
+def create_user(request, token:GoogleTokenDTO):
+  res = register_login(token)
+  # res = testing_login()
+  return auth_router.api.create_response(request, res, status=res.status)
+
+@auth_router.get("user/")
+def get_user(request):
+  user = request.user
+  res = get_user_account(user)
+  return auth_router.api.create_response(request, res, status=res.status)
