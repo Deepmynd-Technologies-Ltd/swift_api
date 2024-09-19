@@ -1,6 +1,4 @@
 # utils/jwt.py
-import base64
-from decimal import Decimal
 from google.auth.transport import requests
 from google.oauth2 import id_token
 from ninja_jwt.tokens import RefreshToken
@@ -9,6 +7,7 @@ from wallet.models import Wallets
 from web3 import Web3
 from eth_account import Account
 from mnemonic import Mnemonic
+from django.conf import settings
 
 def create_jwt_token(user) -> dict:
     tokens = RefreshToken.for_user(user)
@@ -25,8 +24,8 @@ class Google:
         except:
             return "Token is not verified"
 
-# infura_url = 'https://mainnet.infura.io/v3/39e6e3a5da494a6fa2a72542cdcc9b38'
-infura_url = 'HTTP://127.0.0.1:7545'
+infura_url = 'https://mainnet.infura.io/v3/'+settings.INFURA
+# infura_url = 'HTTP://127.0.0.1:7545'
 web3 = Web3(Web3.HTTPProvider(infura_url))
 
 def generate_user_wallet_address(user):

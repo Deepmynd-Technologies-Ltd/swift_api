@@ -1,9 +1,7 @@
 # views.py
 from ninja import Router
 from authentication.schemas import GoogleTokenDTO, ResponseDTO
-from authentication.services import get_user_account, register_login, testing_login
-
-from django.conf import settings
+from authentication.services import get_user_account, register_login
 
 auth_router = Router(tags=["Authentication"])
 
