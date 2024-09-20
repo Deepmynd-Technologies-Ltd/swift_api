@@ -1,9 +1,12 @@
 from ninja.schema import BaseModel, Schema, Field
+from pydantic import EmailStr
 from typing import Any, Optional
 from uuid import uuid4, UUID
 
 class GoogleTokenDTO(BaseModel):
   token:str
+  email:EmailStr
+  name:str
 
 class ResponseDTO(BaseModel):
   data: Any = None

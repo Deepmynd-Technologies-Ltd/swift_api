@@ -5,15 +5,18 @@ from django.conf import settings
 from decouple import config
 
 def register_login(auth_token:GoogleTokenDTO)->ResponseDTO:
-  userData = Google.validate_token(auth_token=auth_token.token)
-  if type(userData) is str:
-    return ResponseDTO(message=userData, status=400, success=False)
+  # userData = Google.validate_token(auth_token=auth_token.token)
+  # if type(userData) is str:
+  #   return ResponseDTO(message=userData, status=400, success=False)
 
-  if userData["aud"] != config("GOOGLE_Client_ID"):
+  # if userData["aud"] != config("GOOGLE_Client_ID"):
+  #   return ResponseDTO(message="Invalid access token", success=False, status= 400)
+
+  if auth_token.token != settings.AUTHTOKEN:
     return ResponseDTO(message="Invalid access token", success=False, status= 400)
 
-  email = userData["email"]
-  fullname=userData["name"]
+  email = auth_token.email.lower()
+  fullname=auth_token.name
 
   user, created = User.objects.get_or_create(email=email, defaults={
     "fullname":fullname,

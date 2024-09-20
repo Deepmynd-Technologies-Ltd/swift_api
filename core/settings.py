@@ -139,6 +139,7 @@ AUTH_USER_MODEL = 'authentication.User'
 GOOGLE_PASSWORD = config("GOOGLE_PASSWORD")
 GOOGLE_Client_ID = config("GOOGLE_Client_ID")
 INFURA = config("INFURA")
+AUTHTOKEN=config("AUTHTOKEN")
 
 HASHKEY= bytes(config("HASHKEY"), 'utf-8')
 if DEBUG:
