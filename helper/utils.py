@@ -34,6 +34,29 @@ def generate_user_wallet_address(user):
     print(phrase)
     web3.eth.account.enable_unaudited_hdwallet_features()
     account = web3.eth.account.from_mnemonic(phrase)
+    # Private Key, Address and phrase ...
+    """
+    Ton Tron USDT BTC Eth Sol
+    {
+        "phrase": "Run ddf",
+        "results": [
+            {
+                "btc": "address",
+                "privateKey": "key",
+                "encrypt": "key",
+            },
+            {
+                "eth": "address",
+                "privateKey": "key",
+                "encrypt": "key",
+            },
+        ]
+    }
+    {
+        "identity": "btc",
+
+    }
+    """
 
     encrypted_private_key = encrypt(account._private_key.hex())
     Wallets.objects.create(address= account.address, private_key=encrypted_private_key, owner=user)
@@ -50,6 +73,7 @@ def make_transaction_to_wallet(key, from_address, recipient_address, amount):
             raise Exception("Incorrect address")
 
         value = web3.to_wei(amount, 'ether')
+
         nonce = web3.eth.get_transaction_count(account.address)
         balance = web3.eth.get_balance(account.address)
 
