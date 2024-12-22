@@ -41,8 +41,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     # Projects
-    'authentication',
-    'wallet',
+    # 'authentication',
+    # 'wallet',
+    'home',
     # Installed Apps
     'ninja_jwt',
     "corsheaders",
@@ -85,10 +86,16 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DB = config("DATABASESURL")
+# DB = config("DATABASESURL")
 
+# DATABASES = {
+#     'default': dj_database_url.config(default=DB)
+# }
 DATABASES = {
-    'default': dj_database_url.config(default=DB)
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 }
 
 
@@ -135,11 +142,14 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-AUTH_USER_MODEL = 'authentication.User'
+# AUTH_USER_MODEL = 'authentication.User'
 GOOGLE_PASSWORD = config("GOOGLE_PASSWORD")
 GOOGLE_Client_ID = config("GOOGLE_Client_ID")
 INFURA = config("INFURA")
-AUTHTOKEN=config("AUTHTOKEN")
+ETH_API_KEY = config("ETHAPIKEY")
+BNB_API_KEY = config("BNBAPIKEY")
+BLOCK_CYPHER = config("BLOCKCYPHER")
+# AUTHTOKEN=config("AUTHTOKEN")
 
 HASHKEY= bytes(config("HASHKEY"), 'utf-8')
 if DEBUG:
