@@ -19,7 +19,7 @@ class Symbols(str, Enum):
   ETH = "eth"
   SOL = "sol"
   TRON = "trx"
-  DODGE = "dodge"
+  DODGE = "doge"
   BNB = "bnb"
   USDT = "usdt"
 
@@ -44,6 +44,11 @@ class WalletInfoResponse(Schema):
   private_key: str
   balance:float
   symbols: Symbols
+  price: float
+  changes: float
+  volume: float
+  idName: str
+  icon_url: str
 
 class TransactionType(str, Enum):
   SENT = "sent"

@@ -14,6 +14,7 @@ from datetime import timedelta
 from pathlib import Path
 from decouple import config, Csv
 import dj_database_url
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -136,6 +137,10 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+SITE_URL = "http://localhost:8000"
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 # Default primary key field type

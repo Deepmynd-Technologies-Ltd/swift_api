@@ -41,7 +41,7 @@ def get_wallet_balance(symbols:Symbols, address:str)->WalletResponseDTO[float]:
   except Exception as ex:
     return WalletResponseDTO(message=str(ex), success=False, status_code=HTTPStatusCode.BAD_REQUEST)
 
-def get_transactions(symbols:Symbols, address:str)-> WalletResponseDTO[List[TransactionsInfo]]:
+def get_all_transactions_history(symbols:Symbols, address:str)-> WalletResponseDTO[List[TransactionsInfo]]:
   try:
     switch = {
       Symbols.BTC: lambda: get_btc_transactions(address),
@@ -70,8 +70,7 @@ def send_crypto_transaction(symbols:Symbols, req:SendTransactionDTO)->WalletResp
       Symbols.TRON: lambda: send_trx(req),
       Symbols.USDT: lambda: send_usdt(req),
     }
-    value = switch.get(symbols, lambda: "Invalid Symbols")()
-    print(value)
+    value = switch.get(symbols)
     return WalletResponseDTO(data="Successful", message="Transaction sent")
   except Exception as ex:
     return WalletResponseDTO(message=str(ex), success=False, status_code=HTTPStatusCode.BAD_REQUEST)
