@@ -33,7 +33,6 @@ def generate_wallet_phrase(request):
 @wallet_system.post('generate_wallet/', response=WalletResponseDTO[List[WalletInfoResponse]], description= second_description, summary="Generate Wallet")
 def generate_wallet(request, req:PhraseRequest):
   res = import_from_phrases(req.phrase)
-  print(res)
   return wallet_system.api.create_response(request, res, status=res.status_code)
 
 @wallet_system.get('get_balance/', response=WalletResponseDTO[float], description=third_description, summary="Get Balance")
