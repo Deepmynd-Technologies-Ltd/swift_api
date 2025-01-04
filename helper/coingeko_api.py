@@ -1,6 +1,7 @@
-from coingecko import CoinGecko
+from pycoingecko import CoinGeckoAPI
 
-cg = CoinGecko()
+
+cg = CoinGeckoAPI()
 def get_coins_value():
   val = cg.get_simple_price(ids=["bitcoin",
         "ethereum",

@@ -18,10 +18,16 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from home import users
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path("api/", include("home.urls")),
+    path('user/', users.create_user, name='create_user'),
+    path('users/', users.get_all_users, name='get_all_users'),
+    path('user/<str:id>/', users.get_user_by_id, name='get_user_by_id'),
+    path('user/<str:id>/delete/', users.delete_user_by_id, name='delete_user_by_id'),
+    path('user/<str:id>/update/', users.update_user_by_id, name='update_user_by_id'),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

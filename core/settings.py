@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     # Installed Apps
     'ninja_jwt',
     "corsheaders",
+    "authentication",
 ]
 
 MIDDLEWARE = [
@@ -92,12 +93,26 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # DATABASES = {
 #     'default': dj_database_url.config(default=DB)
 # }
+
+# SQLite Database
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+# MySQL Database
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': config('DB_NAME'),
+#         'USER': config('DB_USER'),
+#         'PASSWORD': config('DB_PASSWORD'),
+#         'HOST': config('DB_HOST', default='localhost'),
+#         'PORT': config('DB_PORT', default='3306'),
+#     }
+# }
+
 
 
 # Password validation
