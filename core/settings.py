@@ -64,6 +64,9 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
 ]
 
+CORS_ALLOW_ALL_ORIGINS = True
+# CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="http://localhost:3000,http://localhost:3001", cast=Csv())
+
 ROOT_URLCONF = 'core.urls'
 
 TEMPLATES = [

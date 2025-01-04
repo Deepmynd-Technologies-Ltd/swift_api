@@ -14,6 +14,12 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+"""
+URL configuration for core project.
+
+The `urlpatterns` list routes URLs to views. For more information please see:
+    https://docs.djangoproject.com/en/5.1/topics/http/urls/
+"""
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
@@ -23,11 +29,12 @@ from home import users
 urlpatterns = [
     path('admin/', admin.site.urls),
     path("api/", include("home.urls")),
-    path('user/', users.create_user, name='create_user'),
+    path('api/register/', users.register_user, name='register_user'),  # Fixed: Added view function
     path('users/', users.get_all_users, name='get_all_users'),
-    path('user/<str:id>/', users.get_user_by_id, name='get_user_by_id'),
-    path('user/<str:id>/delete/', users.delete_user_by_id, name='delete_user_by_id'),
-    path('user/<str:id>/update/', users.update_user_by_id, name='update_user_by_id'),
+    path('user/<int:user_id>/', users.get_user_by_id, name='get_user_by_id'),  # Fixed: Added parameter
+    path('user/<int:user_id>/delete/', users.delete_user_by_id, name='delete_user_by_id'),  # Fixed: Added parameter
+    path('user/<int:user_id>/update/', users.update_user_by_id, name='update_user_by_id'),  # Fixed: Added parameter
 ]
+
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
