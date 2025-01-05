@@ -137,7 +137,7 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
-SITE_URL = "http://localhost:8000"
+SITE_URL = config('SITEURL')
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
