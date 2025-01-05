@@ -46,7 +46,7 @@ INSTALLED_APPS = [
     # 'wallet',
     'home',
     # Installed Apps
-    'ninja_jwt',
+    # 'ninja_jwt',
     "corsheaders",
 ]
 
