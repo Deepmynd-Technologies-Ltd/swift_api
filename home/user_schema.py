@@ -6,6 +6,15 @@ class UserRequest(Schema):
     email: str
     password: str
 
+class UserLoginRequest(Schema):
+    email: str
+    password: str
+
+class UserLoginResponse(Schema):
+    id: str
+    fullname: str
+    email: str
+
 class UserResponse(Schema):
     id: str
     fullname: str
@@ -16,3 +25,4 @@ class UpdateUserRequest(Schema):
     fullname: str = None
     email: str = None
     password: str = None
+

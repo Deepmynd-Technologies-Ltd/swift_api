@@ -30,6 +30,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path("api/", include("home.urls")),
     path('api/register/', users.register_user, name='register_user'),  # Fixed: Added view function
+    path('api/login/', users.login_user, name='login_user'),  # Fixed: Added view function
     path('users/', users.get_all_users, name='get_all_users'),
     path('user/<int:user_id>/', users.get_user_by_id, name='get_user_by_id'),  # Fixed: Added parameter
     path('user/<int:user_id>/delete/', users.delete_user_by_id, name='delete_user_by_id'),  # Fixed: Added parameter

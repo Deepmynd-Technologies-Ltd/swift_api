@@ -20,3 +20,4 @@ def get_user(request):
   user = request.user
   res = get_user_account(user)
   return auth_router.api.create_response(request, res, status=res.status)
+

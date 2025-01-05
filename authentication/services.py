@@ -5,6 +5,9 @@ from django.conf import settings
 from decouple import config
 
 def register_login(auth_token:GoogleTokenDTO)->ResponseDTO:
+  """
+  Register or login a user using google auth token
+  """
   userData = Google.validate_token(auth_token=auth_token.token)
   if type(userData) is str:
     return ResponseDTO(message=userData, status=400, success=False)
