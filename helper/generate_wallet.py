@@ -67,13 +67,13 @@ def generate_wallets_from_seed(seed_phrase)-> List[WalletInfoResponse]:
     wallets.append(sol_info)
 
     # Tron (TRX)
-    trx_wallet = Bip44.FromSeed(seed_bytes, Bip44Coins.TRON).DeriveDefaultPath()
-    tron_balance = get_tron_balance(trx_wallet.PublicKey().ToAddress())
-    price_tron =sol_balance * coinValue['tron']['usd']
-    change_tron_hr = coinValue['tron']['usd_24h_change']
-    volume_tron = coinValue['tron']['usd']
-    tron_info = WalletInfoResponse(name="Tron", icon_url=f'{base_url}/tron_icon.svg', idName='tron', symbols= Symbols.TRON, volume= volume_tron, address=trx_wallet.PublicKey().ToAddress(),private_key= trx_wallet.PrivateKey().Raw().ToHex(),balance= round(tron_balance, 6), price=price_tron, changes=round(change_tron_hr, 3))
-    wallets.append(tron_info)
+    # trx_wallet = Bip44.FromSeed(seed_bytes, Bip44Coins.TRON).DeriveDefaultPath()
+    # tron_balance = get_tron_balance(trx_wallet.PublicKey().ToAddress())
+    # price_tron =sol_balance * coinValue['tron']['usd']
+    # change_tron_hr = coinValue['tron']['usd_24h_change']
+    # volume_tron = coinValue['tron']['usd']
+    # tron_info = WalletInfoResponse(name="Tron", icon_url=f'{base_url}/tron_icon.svg', idName='tron', symbols= Symbols.TRON, volume= volume_tron, address=trx_wallet.PublicKey().ToAddress(),private_key= trx_wallet.PrivateKey().Raw().ToHex(),balance= round(tron_balance, 6), price=price_tron, changes=round(change_tron_hr, 3))
+    # wallets.append(tron_info)
 
     # XRP (Ripple)
     xrp_wallet = Bip44.FromSeed(seed_bytes, Bip44Coins.RIPPLE).DeriveDefaultPath()
