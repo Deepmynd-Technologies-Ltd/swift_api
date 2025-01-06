@@ -1,17 +1,17 @@
 import uuid
 from django.db import models
-from django.urls import reverse
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, Group, Permission
 from django.utils.translation import gettext_lazy as _
 from authentication.manager import AccountManagement
 from django.contrib.auth.hashers import make_password
-
 
 class User(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     fullname = models.CharField(max_length=100)  # Increased max_length for flexibility
     password = models.CharField(max_length=250)  # Store hashed passwords
     email = models.EmailField(max_length=254, unique=True)
+    wallet_pin = models.CharField(max_length=128, blank=True, null=True)  # Increased max_length for hashed PIN
+    pin_created_at = models.DateTimeField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
     is_verified = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)

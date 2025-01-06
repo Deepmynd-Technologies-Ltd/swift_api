@@ -15,6 +15,8 @@ from pathlib import Path
 from decouple import config, Csv
 import dj_database_url
 import os
+from cryptography.fernet import Fernet
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -43,7 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # Projects
     # 'authentication',
-    # 'wallet',
+    'wallet',
     'home',
     # Installed Apps
     'ninja_jwt',
@@ -185,7 +187,7 @@ BNB_API_KEY = config("BNBAPIKEY")
 BLOCK_CYPHER = config("BLOCKCYPHER")
 # AUTHTOKEN=config("AUTHTOKEN")
 
-HASHKEY= bytes(config("HASHKEY"), 'utf-8')
+HASHKEY= "iDl7OxifWIlVFWfH7MISNyy9g3dWNqPPuwuV1WpVZvI="
 if DEBUG:
     PAYBIS_KEY = config("PAYBIS_TEST_CRYPT")
 else:

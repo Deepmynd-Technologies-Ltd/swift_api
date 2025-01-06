@@ -9,6 +9,31 @@ from eth_account import Account
 from mnemonic import Mnemonic
 from django.conf import settings
 
+
+def generate_user_wallet(user):
+    mnemo = Mnemonic("english")
+    phrase = mnemo.generate(strength=256)  # Generates a 24-word mnemonic phrase
+    print(f"Seed Phrase: {phrase}")
+    
+    # Enable HD Wallet features (Note: Ensure this is safe and aligns with your security policies)
+    web3 = Web3(Web3.HTTPProvider('https://mainnet.infura.io/v3/' + settings.INFURA))  # Use your Infura project ID
+    web3.eth.account.enable_unaudited_hdwallet_features()
+    
+    account = web3.eth.account.from_mnemonic(phrase)
+    
+    # Encrypt the private key before saving
+    encrypted_private_key = encrypt(account.key.hex())
+    
+    # Create the wallet instance
+    wallet = Wallets.objects.create(
+        address=account.address,
+        private_key=encrypted_private_key,
+        owner=user
+    )
+    
+    return {"address": account.address, "phrase": phrase.split()}
+
+
 def create_jwt_token(user) -> dict:
     tokens = RefreshToken.for_user(user)
     return {"refresh_token": str(tokens), "access_token": str(tokens.access_token)}

@@ -12,6 +12,11 @@ import json
 from authentication.models import User
 from django.contrib.auth import authenticate
 from django.utils import timezone
+from wallet.models import Wallets
+import uuid
+from uuid import uuid4
+from helper.utils import generate_user_wallet
+import traceback
 
 
 user_system = Router(tags=["User Management"])
@@ -98,72 +103,70 @@ def login_user(request):
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
-    
-
 @csrf_exempt
-@user_system.get("createpin/", response={200: dict, 400: dict, 401: dict, 500: dict}, summary="Create 4 digit wallet pin for user")
+@user_system.post(
+    "createpin/", 
+    response={200: dict, 400: dict, 401: dict, 405: dict, 500: dict}, 
+    summary="Create a wallet PIN for user"
+)
 def create_pin(request):
     """
-    Create a 4 digit wallet pin for the user using credentials from session/query params.
+    Create a 4-digit wallet PIN for the user using data from the request body.
     """
-    if request.method != "GET":
-        return JsonResponse({"error": "Only GET requests are allowed"}, status=405)
-    
+    if request.method != "POST":
+        return JsonResponse({"error": "Only POST requests are allowed"}, status=405)
+
     try:
-        # Get user data from session or query parameters
-        user_id = request.GET.get('userId')
-        pin = request.GET.get('pin')
-        
+        # Parse request body
+        data = json.loads(request.body.decode("utf-8"))
+        user_id = data.get('userId')
+        pin = data.get('pin')
+        confirm_pin = data.get('confirmPin')  # Confirmation PIN
+
         # Validate required fields
-        if not user_id or not pin:
-            return JsonResponse({
-                "error": "Missing required fields: userId and pin"
-            }, status=400)
-        
-        # Validate PIN format (must be exactly 4 digits)
+        if not user_id or not pin or not confirm_pin:
+            return JsonResponse({"error": "Missing required fields: userId, pin, and confirmPin"}, status=400)
+
+        # Validate PIN format
         if not isinstance(pin, str) or not pin.isdigit() or len(pin) != 4:
-            return JsonResponse({
-                "error": "PIN must be exactly 4 digits"
-            }, status=400)
+            return JsonResponse({"error": "PIN must be exactly 4 digits"}, status=400)
         
-        # Check if user exists
+        if pin != confirm_pin:
+            return JsonResponse({"error": "PIN and confirmPin do not match"}, status=400)
+
+        # Fetch user
         try:
             user = User.objects.get(id=user_id)
         except User.DoesNotExist:
-            return JsonResponse({
-                "error": "User not found"
-            }, status=401)
-            
+            return JsonResponse({"error": "User not found"}, status=401)
+
         # Check if PIN already exists
         if user.wallet_pin:
-            return JsonResponse({
-                "error": "Wallet PIN already exists for this user"
-            }, status=400)
-        
-        # Hash the PIN before storing
-        hashed_pin = make_password(pin)
-        
-        # Update user with hashed PIN
-        user.wallet_pin = hashed_pin
+            return JsonResponse({"error": "Wallet PIN already exists for this user"}, status=400)
+
+        # Hash the PIN and save
+        user.wallet_pin = make_password(pin)
         user.pin_created_at = timezone.now()
         user.save()
-        
+
+        # Generate wallet address and seed words
+        wallet_data = generate_user_wallet(user)
+        print(wallet_data)
+        wallet_address = wallet_data["address"]
+        seed_words = wallet_data["phrase"]
+        print(wallet_address, seed_words)
+
         return JsonResponse({
-            "message": "Wallet PIN created successfully",
-            "user_id": str(user.id),
-            "pin_created_at": user.pin_created_at.isoformat(),
-            "wallet_created": True
+            "message": "Wallet PIN and wallet created successfully",
+            "userId": str(user.id),
+            "pinCreatedAt": user.pin_created_at.isoformat(),
+            "walletId": str(wallet_address),
+            "walletAddress": wallet_address,
+            "seedWords": seed_words
         }, status=200)
-        
-    except ValidationError as ve:
-        return JsonResponse({
-            "error": ve.errors()
-        }, status=400)
-    except ValueError as ve:
-        return JsonResponse({
-            "error": str(ve)
-        }, status=400)
+
     except Exception as e:
-        return JsonResponse({
-            "error": f"An unexpected error occurred: {str(e)}"
-        }, status=500)
+        traceback.print_exc()
+
+        return JsonResponse({"error": f"An unexpected error occurred: {str(e)}"}, status=500)
+
