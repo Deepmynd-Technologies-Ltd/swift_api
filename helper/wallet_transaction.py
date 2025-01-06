@@ -11,17 +11,18 @@ def get_btc_transactions(address)->List[TransactionsInfo]:
 
   transactions:List[TransactionsInfo] = []
   for tx in data.get("txs", []):
+      txHashUrl = f'https://www.blockchain.com/btc/tx/{tx['hash']}'
       for output in tx.get("outputs", []):
             addresses = output.get("addresses")
             if addresses and address in addresses:  # Ensure addresses is not None
-                val = TransactionsInfo(hash=tx["hash"], transaction_type=TransactionType.RECEIVED, amount=output["value"] / 1e8, timestamp=tx.get("confirmed", None))
+                val = TransactionsInfo(hash=tx["hash"], hashUrl=txHashUrl, transaction_type=TransactionType.RECEIVED, amount=output["value"] / 1e8, timestamp=tx.get("confirmed", None))
                 transactions.append(val)
 
       # Check inputs for sent transactions
       for input_tx in tx.get("inputs", []):
           addresses = input_tx.get("addresses")
           if addresses and address in addresses:  # Ensure addresses is not None
-              val = TransactionsInfo(hash=tx["hash"], transaction_type=TransactionType.SENT, amount=input_tx["output_value"] / 1e8, timestamp=tx.get("confirmed", None))
+              val = TransactionsInfo(hash=tx["hash"], hashUrl=txHashUrl, transaction_type=TransactionType.SENT, amount=input_tx["output_value"] / 1e8, timestamp=tx.get("confirmed", None))
               transactions.append(val)
 
   return transactions
@@ -33,17 +34,18 @@ def get_dodge_transactions(address)->List[TransactionsInfo]:
 
   transactions:List[TransactionsInfo] = []
   for tx in data.get("txs", []):
+      txHashUrl = f'https://dogechain.info/tx/{tx[hash]}'
       for output in tx.get("outputs", []):
             addresses = output.get("addresses")
             if addresses and address in addresses:  # Ensure addresses is not None
-                val = TransactionsInfo(hash=tx["hash"], transaction_type=TransactionType.RECEIVED, amount=output["value"] / 1e8, timestamp=tx.get("confirmed", None))
+                val = TransactionsInfo(hash=tx["hash"], hashUrl= txHashUrl, transaction_type=TransactionType.RECEIVED, amount=output["value"] / 1e8, timestamp=tx.get("confirmed", None))
                 transactions.append(val)
 
       # Check inputs for sent transactions
       for input_tx in tx.get("inputs", []):
           addresses = input_tx.get("addresses")
           if addresses and address in addresses:  # Ensure addresses is not None
-              val = TransactionsInfo(hash=tx["hash"], transaction_type=TransactionType.SENT, amount=input_tx["output_value"] / 1e8, timestamp=tx.get("confirmed", None))
+              val = TransactionsInfo(hash=tx["hash"], hashUrl= txHashUrl, transaction_type=TransactionType.SENT, amount=input_tx["output_value"] / 1e8, timestamp=tx.get("confirmed", None))
               transactions.append(val)
 
   return transactions
@@ -69,9 +71,10 @@ def get_eth_transactions(address)->List[TransactionsInfo]:
     min_value_in_eth = 0.00001  # Minimum ETH threshold
     for tx in transactions_data:
         value_eth = int(tx["value"]) / 1e18
+        txHashUrl = f'https://etherscan.io/tx/{tx["hash"]}'
         if value_eth >= min_value_in_eth:
             tx_type = TransactionType.RECEIVED if tx["to"].lower() == address.lower() else TransactionType.SENT
-            val = TransactionsInfo(hash=tx["hash"], transaction_type=tx_type, amount=value_eth, timestamp=tx["timeStamp"])
+            val = TransactionsInfo(hash=tx["hash"], hashUrl=txHashUrl, transaction_type=tx_type, amount=value_eth, timestamp=tx["timeStamp"])
             transactions.append(val)
 
     return transactions
@@ -125,7 +128,8 @@ def parse_transaction(tx, address):
             amount = balance_change
     else:
         return None
-    return TransactionsInfo(hash=tx_signature, transaction_type=transaction_type, amount=amount / 10**9, timestamp=tx.get("blockTime"))
+    txHashUrl = f'https://explorer.solana.com/tx/{tx_signature}'
+    return TransactionsInfo(hash=tx_signature, hashUrl=txHashUrl, transaction_type=transaction_type, amount=amount / 10**9, timestamp=tx.get("blockTime"))
 
 
 def get_sol_transactions(address)->List[TransactionsInfo]:
@@ -171,6 +175,7 @@ def get_trx_transactions(address)->List[TransactionsInfo]:
     transactions:List[TransactionsInfo] = []
     for tx in data:
         # Safely check for required keys
+
         raw_data = tx.get("raw_data")
         if not raw_data:
             continue
@@ -181,10 +186,11 @@ def get_trx_transactions(address)->List[TransactionsInfo]:
         to_address = parameter.get("to_address")
         from_address = parameter.get("owner_address")
         amount = parameter.get("amount", 0)
+        txHashUrl = f'https://tronscan.org/#/transaction/{tx.get("txID")}'
 
         if to_address and from_address:
             tx_type = TransactionType.RECEIVED if address in to_address else TransactionType.SENT
-            val = TransactionsInfo(hash=tx.get("txID"), transaction_type=tx_type,amount=int(amount)/1e6, timestamp=tx.get("block_timestamp"))
+            val = TransactionsInfo(hash=tx.get("txID"), hashUrl=txHashUrl, transaction_type=tx_type,amount=int(amount)/1e6, timestamp=tx.get("block_timestamp"))
             transactions.append(val)
 
     return transactions
@@ -198,8 +204,9 @@ def get_bnb_transactions(address)->List[TransactionsInfo]:
     formatted_transactions:List[TransactionsInfo] = []
 
     for tx in transactions:
+        txHashUrl = f'https://bscscan.com/tx/{tx["hash"]}'
         tx_type = TransactionType.SENT if tx["from"].lower() == address.lower() else TransactionType.RECEIVED
-        val = TransactionsInfo(hash=tx["hash"], transaction_type=tx_type, amount=int(tx["value"]) / 1e18, timestamp=tx["timeStamp"])
+        val = TransactionsInfo(hash=tx["hash"], hashUrl=txHashUrl, transaction_type=tx_type, amount=int(tx["value"]) / 1e18, timestamp=tx["timeStamp"])
         formatted_transactions.append(val)
 
     return formatted_transactions[:10]
@@ -211,7 +218,8 @@ def get_usdt_transactions(address)->List[TransactionsInfo]:
 
     formatted_transactions:List[TransactionsInfo] = []
     for tx in transactions:
+        txHashUrl = f'https://bscscan.com/tx/{tx["hash"]}'
         tx_type = TransactionType.SENT if tx["from"].lower() == address.lower() else TransactionType.RECEIVED
-        val = TransactionsInfo(hash=tx["hash"], transaction_type=tx_type, amount=int(tx["value"]) / 1e18, timestamp=tx["timeStamp"])
+        val = TransactionsInfo(hash=tx["hash"], hashUrl=txHashUrl, transaction_type=tx_type, amount=int(tx["value"]) / 1e18, timestamp=tx["timeStamp"])
         formatted_transactions.append(val)
     return formatted_transactions

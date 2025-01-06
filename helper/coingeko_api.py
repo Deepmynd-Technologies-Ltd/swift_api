@@ -6,6 +6,7 @@ def get_coins_value():
         "ethereum",
         "tether",
         "solana",
+        "tron",
         "dogecoin",
         "binancecoin",], vs_currencies=["usd"], include_24hr_change=True, include_24hr_vol=True, include_last_updated_at= True, include_market_cap=True)
   # item = cg.get_coin_ohlc(id='bitcoin', days=7, vs_currency='usd')

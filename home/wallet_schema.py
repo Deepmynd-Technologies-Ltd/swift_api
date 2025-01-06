@@ -59,3 +59,4 @@ class TransactionsInfo(Schema):
   transaction_type: TransactionType
   amount: float
   timestamp: str
+  hashUrl:str
