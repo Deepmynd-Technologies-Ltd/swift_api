@@ -11,7 +11,7 @@ def get_btc_transactions(address)->List[TransactionsInfo]:
 
   transactions:List[TransactionsInfo] = []
   for tx in data.get("txs", []):
-      txHashUrl = f'https://www.blockchain.com/btc/tx/{tx['hash']}'
+      txHashUrl = f"https://www.blockchain.com/btc/tx/{tx['hash']}"
       for output in tx.get("outputs", []):
             addresses = output.get("addresses")
             if addresses and address in addresses:  # Ensure addresses is not None

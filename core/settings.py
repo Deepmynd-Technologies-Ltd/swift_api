@@ -148,19 +148,19 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # AUTH_USER_MODEL = 'authentication.User'
-GOOGLE_PASSWORD = config("GOOGLE_PASSWORD")
-GOOGLE_Client_ID = config("GOOGLE_Client_ID")
+GOOGLE_PASSWORD = config("GOOGLE_PASSWORD", default=None)
+GOOGLE_Client_ID = config("GOOGLE_Client_ID", default=None)
 INFURA = config("INFURA")
-ETH_API_KEY = config("ETHAPIKEY")
-BNB_API_KEY = config("BNBAPIKEY")
-BLOCK_CYPHER = config("BLOCKCYPHER")
+ETH_API_KEY = config("ETHAPIKEY", default=None)
+BNB_API_KEY = config("BNBAPIKEY", default=None)
+BLOCK_CYPHER = config("BLOCKCYPHER", default=None)
 # AUTHTOKEN=config("AUTHTOKEN")
 
 HASHKEY= bytes(config("HASHKEY"), 'utf-8')
 if DEBUG:
-    PAYBIS_KEY = config("PAYBIS_TEST_CRYPT")
+    PAYBIS_KEY = config("PAYBIS_TEST_CRYPT", default=None)
 else:
-    PAYBIS_KEY = config("PAYBIS_PROD_CRYPT")
+    PAYBIS_KEY = config("PAYBIS_PROD_CRYPT", default=None)
 
 NINJA_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
@@ -169,8 +169,8 @@ NINJA_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': True,
 
-    'ALGORITHM': config("ALGORITHM"),
-    'SIGNING_KEY': config("SECRETE_KEY"),
+    'ALGORITHM': config("ALGORITHM", default=None),
+    'SIGNING_KEY': config("SECRETE_KEY", default=None),
     'VERIFYING_KEY': None,
     'AUDIENCE': None,
     'ISSUER': None,
