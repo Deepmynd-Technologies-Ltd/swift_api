@@ -1,7 +1,7 @@
 # utils/jwt.py
 from google.auth.transport import requests
 from google.oauth2 import id_token
-from ninja_jwt.tokens import RefreshToken
+# from ninja_jwt.tokens import RefreshToken
 from helper.helper import decrypt, encrypt
 from wallet.models import Wallets
 from web3 import Web3

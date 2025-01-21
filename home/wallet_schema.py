@@ -7,6 +7,10 @@ T = TypeVar("T")
 class PhraseRequest(Schema):
   phrase: str
 
+class UserRequest(Schema):
+  userId: str
+  walletPin: str
+  
 class SendTransactionDTO(Schema):
   private_key: str
   amount: float

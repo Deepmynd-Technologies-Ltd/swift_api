@@ -1,11 +1,14 @@
 # views.py
 from typing import List
 from ninja import Router
-
+from authentication.models import User
 from helper.api_documentation import first_description, second_description, third_description, fourth_description, fifth_description
 from helper.coingeko_api import get_coins_value
-from home.wallet_schema import PhraseRequest, SendTransactionDTO, Symbols, TransactionsInfo, WalletInfoResponse, WalletResponseDTO
+from home.wallet_schema import PhraseRequest, SendTransactionDTO, Symbols, TransactionsInfo, WalletInfoResponse, WalletResponseDTO, UserRequest
 from home.wallet_services import generate_secrete_phrases, get_all_transactions_history, get_wallet_balance, import_from_phrases, send_crypto_transaction
+from helper.utils import generate_user_wallet_address
+import traceback
+from helper.user import create_user
 
 wallet_system = Router(tags=["Wallet Address"])
 
@@ -49,3 +52,4 @@ def get_transactions(request, symbol:Symbols, address:str):
 def send_transactions(request, symbol:Symbols, req:SendTransactionDTO):
   val = send_crypto_transaction(symbol, req)
   return wallet_system.api.create_response(request, val, status=val.status_code)
+

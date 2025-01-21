@@ -33,6 +33,7 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
 CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", cast=Csv())
 
 # Application definition
+AUTH_USER_MODEL = 'authentication.User'
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -42,8 +43,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     # Projects
-    # 'authentication',
-    # 'wallet',
+    'authentication',
+    'wallet',
     'home',
     # Installed Apps
     # 'ninja_jwt',
