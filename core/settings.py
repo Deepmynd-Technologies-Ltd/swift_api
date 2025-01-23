@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     'wallet',
     'home',
     # Installed Apps
-    # 'ninja_jwt',
+    'ninja_jwt',
     "corsheaders",
 ]
 
@@ -171,7 +171,7 @@ NINJA_JWT = {
     'UPDATE_LAST_LOGIN': True,
 
     'ALGORITHM': config("ALGORITHM", default=None),
-    'SIGNING_KEY': config("SECRETE_KEY", default=None),
+    'SIGNING_KEY': config("SECRET_KEY", default=None),
     'VERIFYING_KEY': None,
     'AUDIENCE': None,
     'ISSUER': None,
