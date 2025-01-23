@@ -49,12 +49,24 @@ def get_xrp_balance_and_history(address):
     return balance
 
 def get_bnb_balance_and_history(address):
-    # Get balance
-    balance_url = f"https://api.bscscan.com/api?module=account&action=balance&address={address}&apikey={settings.BNB_API_KEY}"
-    balance_response = requests.get(balance_url)
-    balance_wei = int(balance_response.json().get("result", 0))
-    balance_bnb = balance_wei / 1e18  # Convert from Wei to BNB
-    return balance_bnb
+    try:
+        balance_url = f"https://api.bscscan.com/api?module=account&action=balance&address={address}&apikey={settings.BNB_API_KEY}"
+        balance_response = requests.get(balance_url)
+        response_data = balance_response.json()
+
+        # Check API response status
+        if response_data.get('status') != '1':
+            print(f"BSCScan API Error: {response_data.get('message', 'Unknown error')}")
+            return 0
+
+        # Safely parse balance
+        balance_wei = int(response_data.get('result', 0))
+        balance_bnb = balance_wei / 1e18  # Convert from Wei to BNB
+        return balance_bnb
+
+    except (ValueError, TypeError, KeyError) as e:
+        print(f"Balance retrieval error: {e}")
+        return 0
 
 def get_dodge_balance(address):
   response = requests.get(f"https://api.blockcypher.com/v1/doge/main/addrs/{address}/full")

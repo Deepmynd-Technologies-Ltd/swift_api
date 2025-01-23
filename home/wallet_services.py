@@ -6,6 +6,7 @@ from helper.send_transaction.send_tron import send_trx
 from helper.wallet_balance import get_bnb_balance_and_history, get_btc_balance_and_history, get_dodge_balance, get_eth_balance_and_history, get_sol_balance_and_history, get_tron_balance, get_usdt_balance
 from helper.wallet_transaction import get_bnb_transactions, get_btc_transactions, get_dodge_transactions, get_eth_transactions, get_sol_transactions, get_trx_transactions, get_usdt_transactions
 from home.wallet_schema import HTTPStatusCode, SendTransactionDTO, Symbols, TransactionsInfo, WalletInfoResponse, WalletResponseDTO
+import traceback
 
 def generate_secrete_phrases()->WalletResponseDTO[str]:
   try:
@@ -19,7 +20,8 @@ def import_from_phrases(phrase:str)->WalletResponseDTO[List[WalletInfoResponse]]
     val = generate_wallets_from_seed(phrase)
     return WalletResponseDTO(data=val, message="Wallet Generated")
   except Exception as ex:
-    return WalletResponseDTO(message=str(ex), success=False, status_code=HTTPStatusCode.BAD_REQUEST)
+    error_message = f"{str(ex)}\n{traceback.format_exc()}"
+    return WalletResponseDTO(message=error_message, success=False, status_code=HTTPStatusCode.BAD_REQUEST)
 
 def get_wallet_balance(symbols:Symbols, address:str)->WalletResponseDTO[float]:
   try:
