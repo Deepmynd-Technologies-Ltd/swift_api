@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-el)2qm^py_=4itk)d056r7o*q8u^*s4tviow+ed+1mywa@xaig'
+SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", default=False, cast=bool)
@@ -33,7 +33,7 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
 CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", cast=Csv())
 
 # Application definition
-AUTH_USER_MODEL = 'authentication.User'
+# AUTH_USER_MODEL = 'authentication.User'
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'authentication',
     'wallet',
     'home',
+    'provider',
     # Installed Apps
     'ninja_jwt',
     "corsheaders",
@@ -148,7 +149,9 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-# AUTH_USER_MODEL = 'authentication.User'
+AUTH_USER_MODEL = 'authentication.User'
+ENCRYPTION_KEY = config('ENCRYPTION_KEY')
+
 GOOGLE_PASSWORD = config("GOOGLE_PASSWORD", default=None)
 GOOGLE_Client_ID = config("GOOGLE_Client_ID", default=None)
 INFURA = config("INFURA")
@@ -171,7 +174,7 @@ NINJA_JWT = {
     'UPDATE_LAST_LOGIN': True,
 
     'ALGORITHM': config("ALGORITHM", default=None),
-    'SIGNING_KEY': config("SECRET_KEY", default=None),
+    'SIGNING_KEY': config("SIGNING_KEY", default=None),
     'VERIFYING_KEY': None,
     'AUDIENCE': None,
     'ISSUER': None,
