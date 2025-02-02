@@ -8,7 +8,6 @@ from home.wallet_schema import PhraseRequest, SendTransactionDTO, Symbols, Trans
 from home.wallet_services import generate_secrete_phrases, get_all_transactions_history, get_wallet_balance, import_from_phrases, send_crypto_transaction
 from helper.utils import generate_user_wallet_address
 import traceback
-from helper.user import create_user
 
 wallet_system = Router(tags=["Wallet Address"])
 
