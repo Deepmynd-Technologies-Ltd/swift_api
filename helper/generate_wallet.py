@@ -33,7 +33,8 @@ def generate_wallets_from_seed(seed_phrase)-> List[WalletInfoResponse]:
     price_bitcoin = btc_balance * coinValue['bitcoin']['usd']
     change_bitcoin_hr = coinValue['bitcoin']['usd_24h_change']
     volume_bitcoin = coinValue['bitcoin']['usd']
-    btc_info = WalletInfoResponse(name="Bitcoin", icon_url=f'{base_url}/btc_icon.svg', idName='bitcoin', symbols=Symbols.BTC, volume=volume_bitcoin, address=btc_wallet.address(), private_key=btc_wallet.PrivateKey().Raw().ToHex(), balance=round(btc_balance, 6), price=price_bitcoin, changes=round(change_bitcoin_hr, 3))
+    btc_private_key = HDKey(btc_wallet.wif()).wif()
+    btc_info = WalletInfoResponse(name="Bitcoin", icon_url=f'{base_url}/btc_icon.svg', idName='bitcoin', symbols=Symbols.BTC, volume=volume_bitcoin, address=btc_wallet.address(), private_key=btc_private_key, balance=round(btc_balance, 6), price=price_bitcoin, changes=round(change_bitcoin_hr, 3))
     wallets.append(btc_info)
 
     # Ethereum (ETH)
