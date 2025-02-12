@@ -6,6 +6,7 @@ def send_btc(req: SendTransactionDTO, coin_symbol="btc"):
   try:
     satoshi = int(req.amount * 100_000_000)  # Convert BTC amount to satoshis
     validate_coin(req.to_address, coin_symbol)  # Validate the address
+    print(f"Priavte key: {req.private_key}")
     tx_hash = blockcypher.simple_spend(
         from_privkey=req.private_key,
         to_address=req.to_address,

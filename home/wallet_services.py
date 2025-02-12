@@ -76,15 +76,14 @@ def send_crypto_transaction(symbols:Symbols, req:SendTransactionDTO)->WalletResp
       Symbols.TRON: lambda: send_trx(req),
       Symbols.USDT: lambda: send_usdt_bep20(req),
     }
-    send_function = switch.get(symbols, lambda: "Invalid Symbols")
+    send_function = switch.get(symbols, None)
     
-    if send_function == "Invalid Symbols":
-      raise ValueError(f"Invalid  address")
+    if send_function is None:
+      raise ValueError(f"Invalid symbol: {symbols}")
 
     send_function()
     return WalletResponseDTO(data="Successful", message="Transaction sent")
   except Exception as ex:
     error_message = f"{str(ex)}\n{traceback.format_exc()}"
     print(error_message)
-    return WalletResponseDTO(message=str(ex), success=False, status_code=HTTPStatusCode.BAD_REQUEST)
-  
+    return WalletResponseDTO(message=error_message, success=False, status_code=HTTPStatusCode.BAD_REQUEST)
