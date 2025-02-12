@@ -82,7 +82,7 @@ def send_crypto_transaction(symbols:Symbols, req:SendTransactionDTO)->WalletResp
       raise ValueError(f"Invalid symbol: {symbols}")
 
     send_function()
-    return WalletResponseDTO(data="Successful", message="Transaction sent")
+    return WalletResponseDTO(data="Successful", message="Transaction sent Successfully")
   except Exception as ex:
     error_message = f"{str(ex)}\n{traceback.format_exc()}"
     print(error_message)
