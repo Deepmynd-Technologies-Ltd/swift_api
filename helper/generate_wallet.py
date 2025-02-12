@@ -33,7 +33,8 @@ def generate_wallets_from_seed(seed_phrase)-> List[WalletInfoResponse]:
     price_bitcoin = btc_balance * coinValue['bitcoin']['usd']
     change_bitcoin_hr = coinValue['bitcoin']['usd_24h_change']
     volume_bitcoin = coinValue['bitcoin']['usd']
-    btc_private_key = HDKey(btc_wallet.wif()).wif()
+    private_hex = '221ff330268a9bb5549a02c801764cffbc79d5c26f4041b26293a425fd5b557c'
+    btc_private_key = HDKey(private_hex).wif()
     btc_info = WalletInfoResponse(name="Bitcoin", icon_url=f'{base_url}/btc_icon.svg', idName='bitcoin', symbols=Symbols.BTC, volume=volume_bitcoin, address=btc_wallet.address(), private_key=btc_private_key, balance=round(btc_balance, 6), price=price_bitcoin, changes=round(change_bitcoin_hr, 3))
     wallets.append(btc_info)
 
