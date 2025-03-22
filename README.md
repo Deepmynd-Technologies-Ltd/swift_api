@@ -27,7 +27,7 @@ swift_api/
 │   ├── urls.py
 │   ├── wsgi.py
 │   ├── asgi.py
-├── app_name/  # Replace with your app's name
+├── app_name/  # for varous apps
 │   ├── migrations/
 │   ├── __init__.py
 │   ├── admin.py
@@ -39,6 +39,25 @@ swift_api/
 ├── README.md
 └── ...
 ```
+
+### Description of Key Files and Directories
+
+- **manage.py**: A command-line utility that lets you interact with this Django project in various ways.
+- **swift_api/**: The main Django project directory.
+  - **__init__.py**: An empty file that tells Python that this directory should be considered a package.
+  - **settings.py**: Configuration for the Django project, including database settings, installed apps, middleware, and more.
+  - **urls.py**: The URL declarations for this Django project; a "table of contents" of your Django-powered site.
+  - **wsgi.py**: An entry-point for WSGI-compatible web servers to serve your project.
+  - **asgi.py**: An entry-point for ASGI-compatible web servers to serve your project.
+- **app_name/**: Replace with your app's name. This directory contains the files for your Django app.
+  - **migrations/**: Database migrations for the app.
+  - **__init__.py**: An empty file that tells Python that this directory should be considered a package.
+  - **admin.py**: Configuration for the Django admin interface.
+  - **apps.py**: Configuration for the app.
+  - **models.py**: The data models for the app.
+  - **tests.py**: Unit tests for the app.
+  - **views.py**: The views for the app.
+- **requirements.txt**: A list of Python packages that are required for this project.
 
 ## Installation
 To get started with the project, follow these steps:
@@ -122,7 +141,7 @@ We welcome contributions to the project! To contribute, follow these steps:
    ```bash
    git push origin feature/your-feature-name
    ```
-5. **Create a pull request.**
+5. **Create a pull request.
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
