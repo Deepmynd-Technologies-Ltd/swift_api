@@ -86,3 +86,62 @@ Usage Example:
   "message": "string"
 }
 """
+
+swap_description = """
+Executes a token swap between supported assets, handling both intra-chain and cross-chain swaps.
+
+Features:
+- Supports BNB (BEP20), BTC, DOGE, ETH, SOL, and USDT (BEP20)
+- Automatic routing through best available liquidity providers
+- Slippage tolerance configuration
+- Returns transaction data for wallet signing (never handles private keys)
+
+Swap Flow:
+1. Get quote (optional) - /swap_quote
+2. Prepare transaction - /swap_wallet
+3. User signs transaction in their wallet
+4. Transaction broadcast to network
+
+Request Parameters:
+- to_symbol: Target cryptocurrency symbol
+- amount: Amount to swap (in smallest unit)
+- sender_address: Originating wallet address
+- receiver_address: Destination address (optional, defaults to sender)
+- slippage: Maximum acceptable slippage % (default: 0.5%)
+
+Response Includes:
+- Transaction data for signing
+- Estimated gas fees (where applicable)
+- Swap route details
+- Status tracking information
+
+Usage Example:
+{
+  "to_symbol": "USDT",
+  "amount": "1000000000000000000", // 1 ETH in wei
+  "sender_address": "0x123...",
+  "receiver_address": "0x456...", // Optional
+  "slippage": 0.5 // Optional
+}
+
+Response Example:
+{
+  "data": {
+    "transaction_data": {
+      "to": "0xcontract...",
+      "value": "0",
+      "data": "0xencoded...",
+      "gas": "21000"
+    },
+    "swap_details": {
+      "from_token": "ETH",
+      "to_token": "USDT",
+      "estimated_amount": "1500000000", // 1500 USDT
+      "minimum_received": "1492500000" // After slippage
+    }
+  },
+  "status_code": 200,
+  "success": true,
+  "message": "Transaction ready for signing"
+}
+"""
