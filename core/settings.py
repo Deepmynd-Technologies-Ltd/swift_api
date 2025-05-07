@@ -173,6 +173,11 @@ if DEBUG:
 else:
     PAYBIS_KEY = config("PAYBIS_PROD_CRYPT", default=None)
 
+PAYBIS_API_KEY = config("PAYBISAPIKEY", default=None)
+PAYBIS_SECRET_KEY = config("PAYBISSECRETKEY", default=None)
+KOTANIPAY_API_KEY = config("KOTANIPAYKEY", default=None)
+TRANSAK_API_KEY = config("TRANSAKKEY", default=None)
+
 NINJA_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
