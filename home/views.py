@@ -17,7 +17,7 @@ from home.wallet_services import (
     send_crypto_transaction, get_swap_quote, execute_swap
 )
 
-wallet_system = Router(tags=["Wallet Address"])
+wallet_system = Router(tags=["Wallet Management"])
 
 @wallet_system.get('/')
 def test_ping(request):
