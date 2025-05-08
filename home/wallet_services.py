@@ -173,36 +173,29 @@ def determine_best_provider(from_symbol: Symbols, to_symbol: Symbols) -> SwapPro
 
 def get_paybis_quote(params: Dict) -> Dict:
     """Get swap quote from Paybis API"""
-
     try:
+        # Paybis API requires authentication
         api_key = settings.PAYBIS_API_KEY
-
-        # Validate API key
-        if not api_key:
-            return {
-                "success": False,
-                "message": "Missing Paybis API key in settings.",
-                "status_code": 401
-            }
-
+        secret_key = settings.PAYBIS_SECRET_KEY
+        
         payload = {
             "from_currency": params["from_symbol"],
             "to_currency": params["to_symbol"],
             "amount": params["amount"],
             "address": params["from_address"],
             "refund_address": params["from_address"],
-            "extra_id": None  # Only for tokens like XRP or XLM
+            "extra_id": None  # For coins that need memo/tag
         }
-
+        
         headers = {
-            "Authorization": f"Bearer {api_key}",
+            "X-API-KEY": api_key,
+            "X-API-SECRET": secret_key,
             "Content-Type": "application/json"
         }
-
-        url = "https://api.paybis.com/v2/exchange/calculate"  # Use correct endpoint (verify in docs)
-
+        
+        url = "https://api.paybis.com/v2/public/exchange/calculate"
+        
         response = requests.post(url, headers=headers, json=payload)
-
         if response.status_code == 200:
             return {
                 "success": True,
@@ -217,14 +210,12 @@ def get_paybis_quote(params: Dict) -> Dict:
                 "message": f"Paybis API error: {response.text}",
                 "status_code": response.status_code
             }
-
     except Exception as ex:
         return {
             "success": False,
             "message": f"Error calling Paybis API: {str(ex)}",
             "status_code": 500
         }
-
 
 def get_kotanipay_quote(params: Dict) -> Dict:
     """Get quote from KotaniPay API (specialized for African markets)"""
