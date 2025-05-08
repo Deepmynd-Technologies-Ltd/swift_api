@@ -173,46 +173,36 @@ def determine_best_provider(from_symbol: Symbols, to_symbol: Symbols) -> SwapPro
 
 def get_paybis_quote(params: Dict) -> Dict:
     """Get swap quote from Paybis API"""
+
     try:
-        # Paybis API requires authentication
         api_key = settings.PAYBIS_API_KEY
-        secret_key = settings.PAYBIS_SECRET_KEY
-        
+
+        # Validate API key
+        if not api_key:
+            return {
+                "success": False,
+                "message": "Missing Paybis API key in settings.",
+                "status_code": 401
+            }
+
         payload = {
             "from_currency": params["from_symbol"],
             "to_currency": params["to_symbol"],
             "amount": params["amount"],
             "address": params["from_address"],
             "refund_address": params["from_address"],
-            "extra_id": None  # For coins that need memo/tag
+            "extra_id": None  # Only for tokens like XRP or XLM
         }
-        
+
         headers = {
-            "X-API-KEY": api_key,
-            "X-API-SECRET": secret_key,
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
-        
-        url = "https://api.paybis.com/v2/public/exchange/calculate"
-        
-        if not settings.PAYBIS_API_KEY or not settings.PAYBIS_SECRET_KEY:
-            # For testing purposes without actual API keys, return mock data
-            mock_response = {
-                "success": True,
-                "data": {
-                    "quote_id": "paybis-mock-quote",
-                    "from_amount": params["amount"],
-                    "to_amount": float(params["amount"]) * 0.97,  # 3% fee
-                    "rate": 0.97,
-                    "fee": float(params["amount"]) * 0.03,
-                    "provider": "paybis",
-                    "expires_at": int(time.time()) + 300  # 5 minutes
-                },
-                "message": "Quote retrieved successfully (simulated)"
-            }
-            return mock_response
-        
+
+        url = "https://api.paybis.com/v2/exchange/calculate"  # Use correct endpoint (verify in docs)
+
         response = requests.post(url, headers=headers, json=payload)
+
         if response.status_code == 200:
             return {
                 "success": True,
@@ -227,12 +217,14 @@ def get_paybis_quote(params: Dict) -> Dict:
                 "message": f"Paybis API error: {response.text}",
                 "status_code": response.status_code
             }
+
     except Exception as ex:
         return {
             "success": False,
             "message": f"Error calling Paybis API: {str(ex)}",
             "status_code": 500
         }
+
 
 def get_kotanipay_quote(params: Dict) -> Dict:
     """Get quote from KotaniPay API (specialized for African markets)"""
