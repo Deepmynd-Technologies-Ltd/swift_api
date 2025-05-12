@@ -1,20 +1,29 @@
 from typing import Dict, List, Optional
 from ninja import Router
+from decimal import Decimal
 from helper.api_documentation import (
     first_description, second_description, 
     third_description, fourth_description, 
-    fifth_description, swap_description
+    fifth_description, swap_description,
+    buy_crypto_description, sell_crypto_description,
+    payment_methods_description, currencies_description
 )
 from helper.coingeko_api import get_coins_value
 from home.wallet_schema import (
     PhraseRequest, SendTransactionDTO, Symbols, 
     TransactionsInfo, WalletInfoResponse, WalletResponseDTO,
-    SwapQuoteRequest, SwapExecuteRequest, HTTPStatusCode
+    SwapQuoteRequest, SwapExecuteRequest, HTTPStatusCode,
+    FiatCurrency, TransactionType, BuySellProvider,
+    BuyCryptoRequest, SellCryptoRequest,
+    PaymentMethodsRequest, CurrenciesRequest
 )
 from home.wallet_services import (
     generate_secrete_phrases, import_from_phrases,
     get_wallet_balance, get_all_transactions_history,
-    send_crypto_transaction, get_swap_quote, execute_swap
+    send_crypto_transaction, get_swap_quote, execute_swap,
+    get_swap_status,
+    buy_crypto_with_fiat, sell_crypto_for_fiat,
+    get_available_payment_methods, get_supported_currencies
 )
 
 wallet_system = Router(tags=["Wallet Management"])
@@ -54,32 +63,33 @@ def send_transactions(request, symbol: Symbols, req: SendTransactionDTO):
     val = send_crypto_transaction(symbol, req)
     return wallet_system.api.create_response(request, val, status=val.status_code)
 
-@wallet_system.post("swap/quote/", response=WalletResponseDTO[Dict], 
-                   description=swap_description, summary="Get Swap Quote")
-def get_swap_quote_endpoint(request, req: SwapQuoteRequest):
+@wallet_system.post("swap/execute/", response=WalletResponseDTO[Dict],
+description="Execute a token swap in one step", summary="Execute Token Swap")
+def execute_swap_endpoint(request, req: SwapExecuteRequest):
     try:
-        quote_result = get_swap_quote(
+        # Execute the swap using the unified function
+        swap_result = execute_swap(
             from_symbol=req.from_symbol,
             to_symbol=req.to_symbol,
             amount=req.amount,
             from_address=req.from_address,
             to_address=req.to_address,
             slippage=req.slippage or 0.5,
-            provider=req.provider
+            order="RECOMMENDED"
         )
-        
+
         return wallet_system.api.create_response(
             request,
             WalletResponseDTO(
-                data=quote_result.get("data"),
-                message=quote_result.get("message"),
-                success=quote_result.get("success", False),
-                status_code=quote_result.get("status_code", HTTPStatusCode.OK if quote_result.get("success", False) else HTTPStatusCode.BAD_REQUEST)
+                data=swap_result.get("data"),
+                message=swap_result.get("message"),
+                success=swap_result.get("success", False),
+                status_code=swap_result.get("status_code", HTTPStatusCode.OK)
             ),
-            status=quote_result.get("status_code", HTTPStatusCode.OK if quote_result.get("success", False) else HTTPStatusCode.BAD_REQUEST)
+            status=swap_result.get("status_code", HTTPStatusCode.OK)
         )
     except Exception as ex:
-        error_message = f"Failed to get swap quote: {str(ex)}"
+        error_message = f"Failed to execute swap in views: {str(ex)}"
         return wallet_system.api.create_response(
             request,
             WalletResponseDTO(
@@ -90,33 +100,147 @@ def get_swap_quote_endpoint(request, req: SwapQuoteRequest):
             status=HTTPStatusCode.INTERNAL_SERVER_ERROR
         )
 
-@wallet_system.post("swap/execute/", response=WalletResponseDTO[Dict],
-                   description=swap_description, summary="Execute Token Swap")
-def execute_swap_endpoint(request, req: SwapExecuteRequest):
+@wallet_system.get("swap/status/", response=WalletResponseDTO[Dict],
+                  description="Get status of a swap transaction", 
+                  summary="Get Swap Status")
+def get_swap_status_endpoint(request, tx_hash: str):
     try:
-        execution_result = execute_swap(
-            quote_id=req.quote_id,
-            from_symbol=req.from_symbol,
-            to_symbol=req.to_symbol,
-            amount=req.amount,
-            from_address=req.from_address,
-            to_address=req.to_address,
-            slippage=req.slippage or 0.5,
-            provider=req.provider
+        status_result = get_swap_status(tx_hash)
+        
+        response_data = {
+            "data": status_result.get("data"),
+            "message": status_result.get("message", 
+                        "Transaction status retrieved successfully" if status_result.get("success") else "Failed to get transaction status"),
+            "success": status_result.get("success", False),
+            "status_code": status_result.get("status_code",
+                          HTTPStatusCode.OK if status_result.get("success") else HTTPStatusCode.BAD_REQUEST)
+        }
+
+        return wallet_system.api.create_response(
+            request,
+            WalletResponseDTO(**response_data),
+            status=response_data["status_code"]
+        )
+
+    except Exception as ex:
+        error_message = f"Failed to get swap status: {str(ex)}"
+        return wallet_system.api.create_response(
+            request,
+            WalletResponseDTO(
+                message=error_message,
+                success=False,
+                status_code=HTTPStatusCode.INTERNAL_SERVER_ERROR
+            ),
+            status=HTTPStatusCode.INTERNAL_SERVER_ERROR
+        )
+        
+@wallet_system.post("buy/", response=WalletResponseDTO[Dict],
+                   description=buy_crypto_description, summary="Buy Crypto with Fiat")
+def buy_crypto_endpoint(request, req: BuyCryptoRequest):
+    try:
+        result = buy_crypto_with_fiat(
+            crypto_symbol=req.crypto_symbol,
+            fiat_currency=req.fiat_currency,
+            fiat_amount=req.amount,
+            wallet_address=req.wallet_address,
+            provider=req.provider,
+            email=req.email,
+            phone=req.phone
         )
         
         return wallet_system.api.create_response(
             request,
-            WalletResponseDTO(
-                data=execution_result.get("data"),
-                message=execution_result.get("message"),
-                success=execution_result.get("success", False),
-                status_code=execution_result.get("status_code", HTTPStatusCode.OK if execution_result.get("success", False) else HTTPStatusCode.BAD_REQUEST)
-            ),
-            status=execution_result.get("status_code", HTTPStatusCode.OK if execution_result.get("success", False) else HTTPStatusCode.BAD_REQUEST)
+            result,
+            status=result.status_code
         )
     except Exception as ex:
-        error_message = f"Failed to execute swap: {str(ex)}"
+        error_message = f"Failed to process buy order: {str(ex)}"
+        return wallet_system.api.create_response(
+            request,
+            WalletResponseDTO(
+                message=error_message,
+                success=False,
+                status_code=HTTPStatusCode.INTERNAL_SERVER_ERROR
+            ),
+            status=HTTPStatusCode.INTERNAL_SERVER_ERROR
+        )
+
+@wallet_system.post("sell/", response=WalletResponseDTO[Dict],
+                   description=sell_crypto_description, summary="Sell Crypto for Fiat")
+def sell_crypto_endpoint(request, req: SellCryptoRequest):
+    try:
+        result = sell_crypto_for_fiat(
+            crypto_symbol=req.crypto_symbol,
+            fiat_currency=req.fiat_currency,
+            crypto_amount=req.amount,
+            wallet_address=req.wallet_address,
+            bank_account=req.bank_account,
+            account_name=req.account_name,
+            bank_code=req.bank_code,
+            provider=req.provider,
+            email=req.email,
+            phone=req.phone
+        )
+        
+        return wallet_system.api.create_response(
+            request,
+            result,
+            status=result.status_code
+        )
+    except Exception as ex:
+        error_message = f"Failed to process sell order: {str(ex)}"
+        return wallet_system.api.create_response(
+            request,
+            WalletResponseDTO(
+                message=error_message,
+                success=False,
+                status_code=HTTPStatusCode.INTERNAL_SERVER_ERROR
+            ),
+            status=HTTPStatusCode.INTERNAL_SERVER_ERROR
+        )
+
+@wallet_system.post("payment-methods/", response=WalletResponseDTO[Dict],
+                   description=payment_methods_description, summary="Get Available Payment Methods")
+def get_payment_methods_endpoint(request, req: PaymentMethodsRequest):
+    try:
+        result = get_available_payment_methods(
+            provider=req.provider,
+            fiat_currency=req.fiat_currency
+        )
+        
+        return wallet_system.api.create_response(
+            request,
+            result,
+            status=result.status_code
+        )
+    except Exception as ex:
+        error_message = f"Failed to get payment methods: {str(ex)}"
+        return wallet_system.api.create_response(
+            request,
+            WalletResponseDTO(
+                message=error_message,
+                success=False,
+                status_code=HTTPStatusCode.INTERNAL_SERVER_ERROR
+            ),
+            status=HTTPStatusCode.INTERNAL_SERVER_ERROR
+        )
+
+@wallet_system.post("currencies/", response=WalletResponseDTO[Dict],
+                   description=currencies_description, summary="Get Supported Currencies")
+def get_currencies_endpoint(request, req: CurrenciesRequest):
+    try:
+        result = get_supported_currencies(
+            provider=req.provider,
+            transaction_type=req.transaction_type
+        )
+        
+        return wallet_system.api.create_response(
+            request,
+            result,
+            status=result.status_code
+        )
+    except Exception as ex:
+        error_message = f"Failed to get supported currencies: {str(ex)}"
         return wallet_system.api.create_response(
             request,
             WalletResponseDTO(

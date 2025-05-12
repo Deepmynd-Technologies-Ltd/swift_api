@@ -30,15 +30,17 @@ class Symbols(str, Enum):
   DODGE = "doge"
   BNB = "bnb"
   USDT = "usdt"
+  USD = "usd" 
 
 class HTTPStatusCode(int, Enum):
-  OK = 200
-  CREATED = 201
-  BAD_REQUEST = 400
-  UNAUTHORIZED = 401
-  FORBIDDEN = 403
-  NOT_FOUND = 404
-  INTERNAL_SERVER_ERROR = 500
+    OK = 200
+    CREATED = 201
+    BAD_REQUEST = 400
+    UNAUTHORIZED = 401
+    FORBIDDEN = 403
+    NOT_FOUND = 404
+    UNPROCESSABLE_ENTITY = 422
+    INTERNAL_SERVER_ERROR = 500
 
 class WalletResponseDTO(Schema, Generic[T]):
   data: T = None
@@ -71,10 +73,11 @@ class TransactionsInfo(Schema):
 
 # Swap schemas
 
-class SwapProvider(str, Enum):
+class BuySellProvider(str, Enum):
     PAYBIS = "paybis"
     KOTANIPAY = "kotanipay"
     TRANSAK = "transak"
+    MOONPAY = "moonpay"
 
 class SwapStepTransactionData(BaseModel):
     data: str
@@ -91,13 +94,12 @@ class SwapStep(BaseModel):
     transaction_data: Optional[SwapStepTransactionData] = None
 
 class SwapQuoteRequest(BaseModel):
-    from_symbol: Symbols
-    to_symbol: Symbols
+    from_symbol: Union[Symbols, str]
+    to_symbol: Union[Symbols, str]
     amount: Union[str, float, Decimal]
     from_address: str
     to_address: Optional[str] = None
     slippage: Optional[float] = 0.5
-    provider: Optional[SwapProvider] = None
 
 class SwapRouteStep(BaseModel):
     type: str
@@ -113,24 +115,32 @@ class SwapQuoteResponse(BaseModel):
     steps: List[SwapRouteStep]
     fee: Optional[str] = None
     gas_estimate: Optional[str] = None
-    provider: str
     expiry: Optional[int] = None
     raw_response: Optional[Dict[str, Any]] = None
 
-class SwapExecuteRequest(BaseModel):
-    quote_id: str
+class SwapStepTransactionRequest(BaseModel):
+    step_id: str
     from_address: str
     to_address: Optional[str] = None
-    signature: Optional[str] = None
-    provider: Optional[SwapProvider] = None
-    # The following fields would normally be retrieved from the database
-    # but are included here to simplify testing with Postman
-    from_symbol: Optional[Symbols] = None
-    to_symbol: Optional[Symbols] = None
-    from_token_address: Optional[str] = None
-    to_token_address: Optional[str] = None
-    amount: Optional[Union[str, float, Decimal]] = None
-    slippage: Optional[float] = None
+    slippage: Optional[float] = 0.5
+
+class SwapPrepareResponse(BaseModel):
+    transaction_data: Dict[str, Any]
+    chain_id: Union[int, str]
+    token_transfer: Optional[Dict[str, Any]] = None
+    provider: str
+    preparation_timestamp: int
+
+class SwapStatusRequest(BaseModel):
+    tx_hash: str
+
+class SwapExecuteRequest(BaseModel):
+    from_symbol: Union[Symbols, str]
+    to_symbol: Union[Symbols, str]
+    amount: Union[str, float, Decimal]
+    from_address: str
+    to_address: Optional[str] = None
+    slippage: Optional[float] = 0.5
 
 class SwapTransaction(BaseModel):
     from_address: str
@@ -162,3 +172,46 @@ class SwapStatusResponse(BaseModel):
     to_token: Dict[str, Any]
     estimated_received: Optional[str] = None
     actual_received: Optional[str] = None
+
+class FiatCurrency(str, Enum):
+    USD = "usd"
+    EUR = "eur"
+    GBP = "gbp"
+    NGN = "ngn"
+
+class BuyCryptoRequest(BaseModel):
+    from_symbol: Symbols
+    to_symbol: FiatCurrency
+    amount: Union[str, float, Decimal]
+    from_address: str
+    to_address: Optional[str] = None
+    slippage: Optional[float] = 0.5
+    provider: Optional[BuySellProvider] = None
+
+class SellCryptoRequest(BaseModel):
+    from_symbol: FiatCurrency
+    to_symbol: Symbols
+    amount: Union[str, float, Decimal]
+    from_address: str
+    to_address: Optional[str] = None
+    slippage: Optional[float] = 0.5
+    provider: Optional[BuySellProvider] = None
+
+class PaymentMethodsRequest(BaseModel):
+    from_symbol: Symbols
+    to_symbol: FiatCurrency
+    amount: Union[str, float, Decimal]
+    from_address: str
+    to_address: Optional[str] = None
+    slippage: Optional[float] = 0.5
+    provider: Optional[BuySellProvider] = None
+
+class CurrenciesRequest(BaseModel):
+    from_symbol: Symbols
+    to_symbol: FiatCurrency
+    amount: Union[str, float, Decimal]
+    from_address: str
+    to_address: Optional[str] = None
+    slippage: Optional[float] = 0.5
+    provider: Optional[BuySellProvider] = None
+

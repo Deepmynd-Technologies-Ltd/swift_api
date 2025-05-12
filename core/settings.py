@@ -174,6 +174,7 @@ else:
     PAYBIS_KEY = config("PAYBIS_PROD_CRYPT", default=None)
 
 PAYBIS_API_KEY = config("PAYBISKEY", default=None)
+PAYBIS_SECRET_KEY = config("PAYBISSECRETKEY", default=None)
 KOTANIPAY_API_KEY = config("KOTANIPAYKEY", default=None)
 TRANSAK_API_KEY = config("TRANSAKKEY", default=None)
 

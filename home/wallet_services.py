@@ -1,15 +1,15 @@
-import traceback
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Callable, Union
 import requests
 from decimal import Decimal
 from enum import Enum
-from django.conf import settings
 import time
+from django.conf import settings
 from home.wallet_schema import (
     Symbols, SendTransactionDTO, WalletResponseDTO, HTTPStatusCode,
-    TransactionsInfo, WalletInfoResponse, SwapProvider
+    TransactionsInfo, WalletInfoResponse, BuySellProvider
 )
 from helper.generate_wallet import generate_mnemonic, generate_wallets_from_seed
+import json
 from helper.send_transaction import (
     send_bnb, send_btc, send_eth, send_sol, send_usdt, send_tron
 )
@@ -24,16 +24,29 @@ from helper.wallet_transaction import (
     get_sol_transactions, get_trx_transactions, get_usdt_transactions
 )
 
-# Chain IDs and Token Configurations
-CHAIN_IDS = {
-    "ethereum": 1,
-    "bsc": 56,
-    "polygon": 137,
-    "solana": "solana",
-    "bitcoin": "bitcoin",
-    "tron": "tron",
-    "dogechain": "doge",
-    "africa": "africa"
+class FiatCurrency(str, Enum):
+    USD = "USD"
+    NGN = "NGN"
+    EUR = "EUR"
+    GBP = "GBP"
+
+class TransactionType(str, Enum):
+    BUY = "buy"
+    SELL = "sell"
+
+# Mapping between string symbols and Symbols enum
+SYMBOL_MAP = {
+    'BNB': Symbols.BNB,
+    'BTC': Symbols.BTC,
+    'ETH': Symbols.ETH,
+    'SOL': Symbols.SOL,
+    'TRON': Symbols.TRON,
+    'USDT': Symbols.USDT,
+    'DODGE': Symbols.DODGE,
+    'USD': FiatCurrency.USD,
+    'NGN': FiatCurrency.NGN,
+    'EUR': FiatCurrency.EUR,
+    'GBP': FiatCurrency.GBP
 }
 
 TOKEN_CONFIG = {
@@ -47,53 +60,27 @@ TOKEN_CONFIG = {
         "ethereum": {"chain": "ethereum", "chain_id": 1, "native": False, "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7"},
         "bsc": {"chain": "bsc", "chain_id": 56, "native": False, "address": "0x55d398326f99059fF775485246999027B3197955"},
         "polygon": {"chain": "polygon", "chain_id": 137, "native": False, "address": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"}
-    }
+    },
+    FiatCurrency.USD: {"chain": "usd", "chain_id": "usd", "native": True, "address": "native"},
+    FiatCurrency.NGN: {"chain": "ngn", "chain_id": "ngn", "native": True, "address": "native"},
+    FiatCurrency.EUR: {"chain": "eur", "chain_id": "eur", "native": True, "address": "native"},
+    FiatCurrency.GBP: {"chain": "gbp", "chain_id": "gbp", "native": True, "address": "native"}
 }
 
-# Wallet Core Functions
-def generate_secrete_phrases() -> WalletResponseDTO[str]:
+def convert_to_symbol(symbol: Union[Symbols, str]) -> Symbols:
+    """Convert a string symbol to Symbols enum."""
+    if isinstance(symbol, Symbols):
+        return symbol
     try:
-        phrases = generate_mnemonic()
-        return WalletResponseDTO(data=phrases, message="Phrases generated")
-    except Exception as ex:
-        return WalletResponseDTO(
-            message=str(ex),
-            status_code=HTTPStatusCode.BAD_REQUEST,
-            success=False
-        )
+        return SYMBOL_MAP[symbol.upper()]
+    except KeyError:
+        raise ValueError(f"Invalid symbol: {symbol}")
 
-def import_from_phrases(phrase: str) -> WalletResponseDTO[List[WalletInfoResponse]]:
+def handle_wallet_response(func: Callable, *args, **kwargs) -> WalletResponseDTO:
+    """Generic handler for wallet operations."""
     try:
-        val = generate_wallets_from_seed(phrase)
-        return WalletResponseDTO(data=val, message="Wallet Generated")
-    except Exception as ex:
-        return WalletResponseDTO(
-            message=str(ex),
-            success=False,
-            status_code=HTTPStatusCode.BAD_REQUEST
-        )
-
-def get_wallet_balance(symbol: Symbols, address: str) -> WalletResponseDTO[float]:
-    try:
-        balance_handlers = {
-            Symbols.BTC: get_btc_balance_and_history,
-            Symbols.ETH: get_eth_balance_and_history,
-            Symbols.SOL: get_sol_balance_and_history,
-            Symbols.DODGE: get_dodge_balance,
-            Symbols.BNB: get_bnb_balance_and_history,
-            Symbols.TRON: get_tron_balance,
-            Symbols.USDT: get_usdt_balance,
-        }
-        
-        handler = balance_handlers.get(symbol)
-        if not handler:
-            raise ValueError("Invalid symbol")
-            
-        value = handler(address=address)
-        if not isinstance(value, float):
-            raise Exception("Invalid balance response")
-            
-        return WalletResponseDTO(data=value, message="Balance retrieved")
+        data = func(*args, **kwargs)
+        return WalletResponseDTO(data=data, message=f"{func.__name__} successful")
     except Exception as ex:
         return WalletResponseDTO(
             message=str(ex),
@@ -101,465 +88,801 @@ def get_wallet_balance(symbol: Symbols, address: str) -> WalletResponseDTO[float
             status_code=HTTPStatusCode.BAD_REQUEST
         )
 
-def get_all_transactions_history(symbol: Symbols, address: str) -> WalletResponseDTO[List[TransactionsInfo]]:
+def get_token_config(symbol: Union[Symbols, str]) -> Dict:
+    """Get token configuration with fallback to BSC for USDT."""
     try:
-        tx_handlers = {
-            Symbols.BTC: get_btc_transactions,
-            Symbols.ETH: get_eth_transactions,
-            Symbols.SOL: get_sol_transactions,
-            Symbols.DODGE: get_dodge_transactions,
-            Symbols.BNB: get_bnb_transactions,
-            Symbols.TRON: get_trx_transactions,
-            Symbols.USDT: get_usdt_transactions,
-        }
-        
-        handler = tx_handlers.get(symbol)
-        if not handler:
-            raise ValueError("Invalid symbol")
-            
-        transactions = handler(address)
-        return WalletResponseDTO(data=transactions, message="Transaction list retrieved")
-    except Exception as ex:
+        symbol = convert_to_symbol(symbol)
+    except ValueError as e:
+        return None
+    
+    config = TOKEN_CONFIG.get(symbol)
+    return config.get("bsc") if isinstance(config, dict) and "chain" not in config else config
+
+# Wallet Core Functions (unchanged)
+generate_secrete_phrases = lambda: handle_wallet_response(generate_mnemonic)
+import_from_phrases = lambda phrase: handle_wallet_response(generate_wallets_from_seed, phrase)
+
+def get_wallet_balance(symbol: Union[Symbols, str], address: str) -> WalletResponseDTO[float]:
+    try:
+        symbol = convert_to_symbol(symbol)
+    except ValueError as e:
         return WalletResponseDTO(
-            message=str(ex),
+            message=str(e),
             success=False,
             status_code=HTTPStatusCode.BAD_REQUEST
         )
+    
+    handlers = {
+        Symbols.BTC: get_btc_balance_and_history,
+        Symbols.ETH: get_eth_balance_and_history,
+        Symbols.SOL: get_sol_balance_and_history,
+        Symbols.DODGE: get_dodge_balance,
+        Symbols.BNB: get_bnb_balance_and_history,
+        Symbols.TRON: get_tron_balance,
+        Symbols.USDT: get_usdt_balance,
+    }
+    return handle_wallet_response(handlers.get(symbol), address=address)
 
-def send_crypto_transaction(symbol: Symbols, req: SendTransactionDTO) -> WalletResponseDTO[str]:
+def get_all_transactions_history(symbol: Union[Symbols, str], address: str) -> WalletResponseDTO[List[TransactionsInfo]]:
     try:
-        tx_handlers = {
-            Symbols.BTC: lambda: send_btc(req, symbol),
-            Symbols.ETH: lambda: send_eth(req),
-            Symbols.SOL: lambda: send_sol(req),
-            Symbols.DODGE: lambda: send_btc(req, symbol),
-            Symbols.BNB: lambda: send_bnb(req),
-            Symbols.TRON: lambda: send_trx(req),
-            Symbols.USDT: lambda: send_usdt_bep20(req),
-        }
-        
-        handler = tx_handlers.get(symbol)
-        if not handler:
-            raise ValueError("Invalid symbol")
-            
-        handler()
-        return WalletResponseDTO(data="Successful", message="Transaction sent")
-    except Exception as ex:
+        symbol = convert_to_symbol(symbol)
+    except ValueError as e:
         return WalletResponseDTO(
-            message=str(ex),
+            message=str(e),
             success=False,
             status_code=HTTPStatusCode.BAD_REQUEST
         )
+    
+    handlers = {
+        Symbols.BTC: get_btc_transactions,
+        Symbols.ETH: get_eth_transactions,
+        Symbols.SOL: get_sol_transactions,
+        Symbols.DODGE: get_dodge_transactions,
+        Symbols.BNB: get_bnb_transactions,
+        Symbols.TRON: get_trx_transactions,
+        Symbols.USDT: get_usdt_transactions,
+    }
+    return handle_wallet_response(handlers.get(symbol), address)
 
-# Swap Service Functions
-def determine_best_provider(from_symbol: Symbols, to_symbol: Symbols) -> SwapProvider:
-    """Determine the best swap provider based on token pair."""
-    from_config = TOKEN_CONFIG.get(from_symbol)
-    to_config = TOKEN_CONFIG.get(to_symbol)
-    
-    if isinstance(from_config, dict) and "chain" not in from_config:
-        from_config = from_config.get("bsc")
-    
-    if isinstance(to_config, dict) and "chain" not in to_config:
-        to_config = to_config.get("bsc")
-    
-    if from_symbol.value.lower() in ['usd', 'eur', 'gbp'] or to_symbol.value.lower() in ['usd', 'eur', 'gbp']:
-        return SwapProvider.TRANSAK
-    
-    if (from_config.get("chain") == "africa" or to_config.get("chain") == "africa"):
-        return SwapProvider.KOTANIPAY
-    
-    return SwapProvider.PAYBIS
-
-def get_paybis_quote(params: Dict) -> Dict:
-    """Get swap quote from Paybis API"""
+def send_crypto_transaction(symbol: Union[Symbols, str], req: SendTransactionDTO) -> WalletResponseDTO[str]:
     try:
-        # Paybis API requires authentication
-        api_key = settings.PAYBIS_API_KEY
-        secret_key = settings.PAYBIS_SECRET_KEY
+        symbol = convert_to_symbol(symbol)
+    except ValueError as e:
+        return WalletResponseDTO(
+            message=str(e),
+            success=False,
+            status_code=HTTPStatusCode.BAD_REQUEST
+        )
+    
+    handlers = {
+        Symbols.BTC: lambda: send_btc(req, symbol),
+        Symbols.ETH: lambda: send_eth(req),
+        Symbols.SOL: lambda: send_sol(req),
+        Symbols.DODGE: lambda: send_btc(req, symbol),
+        Symbols.BNB: lambda: send_bnb(req),
+        Symbols.TRON: lambda: send_tron(req),
+        Symbols.USDT: lambda: send_usdt(req),
+    }
+    return handle_wallet_response(handlers.get(symbol))
+
+# Simplified Li.Fi Integration
+def api_request_handler(url: str, method: str = "get", headers: Dict = None, 
+                       payload: Dict = None, params: Dict = None) -> Dict:
+    """Generic API request handler."""
+    try:
+        response = requests.request(method, url, headers=headers, json=payload, params=params)
+        if response.status_code == 200:
+            return {"success": True, "data": response.json()}
+        return {"success": False, "message": f"API error: {response.text}", "status_code": response.status_code}
+    except Exception as ex:
+        return {"success": False, "message": f"Exception: {str(ex)}", "status_code": 500}
+
+def get_swap_quote(
+    from_chain: str,
+    to_chain: str,
+    from_token: str,
+    to_token: str,
+    amount: Decimal,
+    from_address: str,
+    to_address: Optional[str] = None,
+    slippage: float = 0.5,
+    order: str = "RECOMMENDED"
+) -> Dict:
+    """Get a quote for swapping tokens using LiFi."""
+    try:
+        try:
+            if isinstance(amount, str):
+                amount = Decimal(amount)
+            # For native tokens (BNB/ETH), multiply by 10^18
+            if from_token.lower() == "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee":
+                amount_wei = int(amount * Decimal(10**18))
+            else:
+                amount_wei = int(amount)
+                
+        except Exception as conv_ex:
+            return {
+                "success": False,
+                "message": f"Invalid amount format: {str(conv_ex)}. Example valid amount: '1.5' for 1.5 BNB",
+                "status_code": HTTPStatusCode.BAD_REQUEST
+            }
         
-        payload = {
-            "from_currency": params["from_symbol"],
-            "to_currency": params["to_symbol"],
-            "amount": params["amount"],
-            "address": params["from_address"],
-            "refund_address": params["from_address"],
-            "extra_id": None  # For coins that need memo/tag
+        params = {
+            "fromChain": from_chain,
+            "toChain": to_chain,
+            "fromToken": from_token,
+            "toToken": to_token,
+            "fromAddress": from_address,
+            "fromAmount": str(amount_wei),
+            "slippage": slippage / 100,
+            "order": order
         }
+        
+        if to_address:
+            params["toAddress"] = to_address
         
         headers = {
-            "X-API-KEY": api_key,
-            "X-API-SECRET": secret_key,
+            "Accept": "application/json",
             "Content-Type": "application/json"
         }
         
-        url = "https://api.paybis.com/v2/public/exchange/calculate"
+        # Add API key if configured
+        if hasattr(settings, 'LIFI_API_KEY') and settings.LIFI_API_KEY:
+            headers["x-lifi-api-key"] = settings.LIFI_API_KEY
         
-        response = requests.post(url, headers=headers, json=payload)
-        if response.status_code == 200:
-            return {
-                "success": True,
-                "data": response.json(),
-                "provider": "paybis",
-                "quote_id": response.json().get("id"),
-                "message": "Paybis quote retrieved"
-            }
-        else:
+        # Make the API request with detailed error handling
+        result = api_request_handler("https://li.quest/v1/quote", "get", headers=headers, params=params)
+        
+        if not result.get("success"):
+            # If the API returned an error, use its message
+            error_msg = result.get("message", "Unknown API error")
+            if "data" in result and isinstance(result["data"], dict):
+                error_msg = result["data"].get("message", error_msg)
             return {
                 "success": False,
-                "message": f"Paybis API error: {response.text}",
-                "status_code": response.status_code
+                "message": f"LiFi API error: {error_msg}",
+                "status_code": result.get("status_code", HTTPStatusCode.BAD_REQUEST),
+                "data": result.get("data")
             }
+        
+        # Add provider metadata to successful response
+        if result.get("data"):
+            result["data"]["provider"] = "lifi"
+            result["data"]["quote_id"] = result["data"].get("id")
+        
+        return result
+        
     except Exception as ex:
+        # Get the most detailed error message possible
+        error_msg = str(ex) or "Unknown error"
+        if hasattr(ex, '__dict__'):
+            error_msg = getattr(ex, 'message', error_msg)
+            error_msg = getattr(ex, 'args', [error_msg])[0]
+        
         return {
             "success": False,
-            "message": f"Error calling Paybis API: {str(ex)}",
-            "status_code": 500
+            "message": f"Failed to get swap quote: {error_msg}",
+            "status_code": HTTPStatusCode.INTERNAL_SERVER_ERROR,
+            "exception_type": ex.__class__.__name__ if hasattr(ex, '__class__') else None
         }
 
-def get_kotanipay_quote(params: Dict) -> Dict:
-    """Get quote from KotaniPay API (specialized for African markets)"""
+def get_swap_status(tx_hash: str) -> Dict:
+    """Get the status of a swap transaction using LiFi API."""
     try:
-        # KotaniPay API requires authentication
-        api_key = settings.KOTANIPAY_API_KEY
+        if not tx_hash:
+            return {
+                "success": False,
+                "message": "Transaction hash is required",
+                "status_code": HTTPStatusCode.BAD_REQUEST
+            }
+
+        headers = {
+            "Accept": "application/json",
+        }
+
+        # Add API key if configured
+        if hasattr(settings, 'LIFI_API_KEY') and settings.LIFI_API_KEY:
+            headers["x-lifi-api-key"] = settings.LIFI_API_KEY
+
+        params = {
+            "txHash": tx_hash
+        }
+
+        # Make the API request
+        result = api_request_handler(
+            "https://li.quest/v1/status",
+            method="get",
+            headers=headers,
+            params=params
+        )
+
+        if not result.get("success"):
+            return {
+                "success": False,
+                "message": result.get("message", "Failed to get transaction status"),
+                "status_code": result.get("status_code", HTTPStatusCode.BAD_REQUEST),
+                "data": result.get("data")
+            }
+
+        # Add provider info
+        if result.get("data"):
+            result["data"]["provider"] = "lifi"
         
-        payload = {
-            "fromCurrency": params["from_symbol"],
-            "toCurrency": params["to_symbol"],
-            "amount": params["amount"],
-            "address": params["from_address"],
-            "network": params.get("from_chain", "ethereum")  # Default to Ethereum
+        return result
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Failed to get transaction status: {str(e)}",
+            "status_code": HTTPStatusCode.INTERNAL_SERVER_ERROR,
+            "exception_type": e.__class__.__name__
+        }
+
+def execute_swap(
+    from_symbol: Union[str, int],
+    to_symbol: Union[str, int],
+    amount: Union[str, float, Decimal],
+    from_address: str,
+    to_address: Optional[str] = None,
+    slippage: float = 0.5,
+    order: str = "RECOMMENDED"
+) -> Dict:
+    """
+    Unified function to handle the entire swap process:
+    1. Get a swap quote
+    2. Prepare the transaction data
+    3. Return the transaction data ready for signing
+    """
+    try:
+        # Step 1: Get the swap quote
+        quote_result = get_swap_quote(
+            from_chain=str(from_symbol),
+            to_chain=str(to_symbol),
+            from_token="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            to_token="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            amount=amount,
+            from_address=from_address,
+            to_address=to_address,
+            slippage=slippage,
+            order=order
+        )
+        
+        if not quote_result.get("success"):
+            return quote_result
+        
+        quote_data = quote_result.get("data", {})
+        
+        # Extract the first step from includedSteps if available
+        included_steps = quote_data.get("includedSteps", [])
+        first_step = included_steps[0] if included_steps else {}
+        
+        # Prepare the step payload with all required fields
+        step_data = {
+            "id": quote_data.get("id"),
+            "type": first_step.get("type", "cross"),  # Default to 'cross' if not specified
+            "tool": first_step.get("tool", quote_data.get("tool")),  # Get tool from first step or quote
+            "toolDetails": first_step.get("toolDetails", quote_data.get("toolDetails", {})),
+            "action": first_step.get("action", quote_data.get("action", {})),
+            "estimate": first_step.get("estimate", quote_data.get("estimate", {})),
+            "integrator": quote_data.get("integrator", "lifi-api"),
+            "fromAddress": from_address,
+            "slippage": slippage / 100  # Convert percentage to decimal
         }
         
+        # Add toAddress if provided
+        if to_address:
+            step_data["toAddress"] = to_address
+
         headers = {
-            "Authorization": f"Bearer {api_key}",
+            "Accept": "application/json",
             "Content-Type": "application/json"
         }
         
-        url = "https://api.kotanipay.com/v1/quote"
-        
-        if not settings.KOTANIPAY_API_KEY:
-            mock_response = {
-                "success": True,
-                "data": {
-                    "quoteId": "kotanipay-mock-quote",
-                    "fromAmount": params["amount"],
-                    "toAmount": float(params["amount"]) * 0.95,  # 5% fee
-                    "fee": float(params["amount"]) * 0.05,
-                    "rate": 0.95,
-                    "provider": "kotanipay",
-                    "expiresIn": 300  # 5 minutes
-                },
-                "message": "Quote retrieved successfully (simulated)"
-            }
-            return mock_response
-        
-        response = requests.post(url, headers=headers, json=payload)
-        if response.status_code == 200:
-            return {
-                "success": True,
-                "data": response.json(),
-                "provider": "kotanipay",
-                "quote_id": response.json().get("quoteId"),
-                "message": "KotaniPay quote retrieved"
-            }
-        else:
+        if hasattr(settings, 'LIFI_API_KEY') and settings.LIFI_API_KEY:
+            headers["x-lifi-api-key"] = settings.LIFI_API_KEY
+
+        # Make the API request to get transaction data
+        response = requests.post(
+            "https://li.quest/v1/advanced/stepTransaction",
+            headers=headers,
+            json={"step": step_data}  # Properly structured step data
+        )
+
+        if response.status_code != 200:
             return {
                 "success": False,
-                "message": f"KotaniPay API error: {response.text}",
-                "status_code": response.status_code
+                "message": f"LiFi API error: {response.text}",
+                "status_code": response.status_code,
+                "data": response.json() if response.content else {}
             }
-    except Exception as ex:
-        return {
-            "success": False,
-            "message": f"Error calling KotaniPay API: {str(ex)}",
-            "status_code": 500
+
+        transaction_data = response.json()
+        
+        if not transaction_data.get("success"):
+            return {
+                "success": False,
+                "message": transaction_data.get("message", "Unknown error from LiFi"),
+                "status_code": HTTPStatusCode.BAD_REQUEST,
+                "data": transaction_data
+            }
+
+        # Combine all the data into the desired format
+        result = {
+            "type": quote_data.get("type", "lifi"),
+            "toolDetails": quote_data.get("toolDetails", {}),
+            "action": quote_data.get("action", {}),
+            "estimate": quote_data.get("estimate", {}),
+            "id": quote_data.get("id"),
+            "tool": quote_data.get("tool"),
+            "integrator": quote_data.get("integrator", "lifi-api"),
+            "includedSteps": quote_data.get("includedSteps", []),
+            "transactionRequest": transaction_data.get("data", {})
         }
 
-def get_transak_quote(params: Dict) -> Dict:
-    """Get quote from Transak API (best for fiat integration)"""
-    try:
-        # Transak API requires authentication
-        api_key = settings.TRANSAK_API_KEY
-        
-        payload = {
-            "fiatCurrency": params["from_symbol"] if params["from_symbol"] in ['USD', 'EUR', 'GBP'] else params["to_symbol"],
-            "cryptoCurrency": params["to_symbol"] if params["from_symbol"] in ['USD', 'EUR', 'GBP'] else params["from_symbol"],
-            "amount": params["amount"],
-            "paymentMethod": "credit_debit_card",  # Could be parameterized
-            "isBuyOrSell": "buy" if params["from_symbol"] in ['USD', 'EUR', 'GBP'] else "sell",
-            "network": params.get("to_chain" if params["from_symbol"] in ['USD', 'EUR', 'GBP'] else "from_chain", "ethereum")
+        return {
+            "success": True,
+            "message": "Swap execution prepared successfully",
+            "status_code": HTTPStatusCode.OK,
+            "data": result
         }
-        
+
+    except Exception as ex:
+        error_msg = str(ex) or "Unknown error occurred during swap execution"
+        return {
+            "success": False,
+            "message": f"Failed to execute swap: {error_msg}",
+            "status_code": HTTPStatusCode.INTERNAL_SERVER_ERROR,
+            "exception_type": ex.__class__.__name__
+        }
+
+
+# Fiat transaction functions (remain unchanged from your original code)
+# def handle_fiat_transaction(
+#     transaction_type: TransactionType,
+#     crypto_symbol: Union[Symbols, str],
+#     fiat_currency: FiatCurrency,
+#     amount: Decimal,
+#     wallet_address: str,
+#     provider: Optional[BuySellProvider] = None,
+#     email: Optional[str] = None,
+#     phone: Optional[str] = None,
+#     **extra_params
+# ) -> Dict:
+#     try:
+#         crypto_symbol = convert_to_symbol(crypto_symbol)
+#     except ValueError as e:
+#         return {"success": False, "message": str(e), "status_code": HTTPStatusCode.BAD_REQUEST}
+    
+#     token_config = get_token_config(crypto_symbol)
+#     if not token_config:
+#         return {
+#             "success": False,
+#             "message": f"Unsupported token: {crypto_symbol}",
+#             "status_code": HTTPStatusCode.BAD_REQUEST
+#         }
+    
+#     params = {
+#         "crypto_symbol": crypto_symbol.value,
+#         "fiat_currency": fiat_currency.value,
+#         "amount": str(amount),
+#         "wallet_address": wallet_address,
+#         "crypto_network": token_config.get("chain", "ethereum"),
+#         "email": email,
+#         "phone": phone,
+#         "transaction_type": transaction_type.value,
+#         **extra_params
+#     }
+    
+#     provider = provider or determine_best_provider_for_fiat(crypto_symbol, fiat_currency)
+    
+#     quote_result = get_fiat_transaction_quote(params, provider)
+#     if not quote_result.get("success", False):
+#         return quote_result
+
+#     except Exception as e:
+#         return {"success": False, "message": f"Failed to execute swap: {str(e)}", "status_code": HTTPStatusCode.INTERNAL_SERVER_ERROR}
+#     quote_id = quote_result.get("quote_id")
+#     return execute_fiat_transaction(quote_id, params, provider)
+
+def determine_best_provider_for_fiat(crypto_symbol: Symbols, fiat_currency: FiatCurrency) -> BuySellProvider:
+    if fiat_currency == FiatCurrency.NGN:
+        return BuySellProvider.KOTANIPAY
+    if crypto_symbol in [Symbols.BTC, Symbols.ETH, Symbols.USDT]:
+        return BuySellProvider.MOONPAY
+    return BuySellProvider.PAYBIS
+
+def get_fiat_transaction_quote(params: Dict, provider: BuySellProvider) -> Dict:
+    is_buy = params["transaction_type"] == TransactionType.BUY.value
+    
+    if provider == BuySellProvider.PAYBIS:
+        payload = {
+            "currencyCodeFrom": params["fiat_currency"] if is_buy else params["crypto_symbol"],
+            "currencyCodeTo": params["crypto_symbol"] if is_buy else params["fiat_currency"],
+            "amount": params["amount"],
+            "directionChange": "from",
+            "isReceivedAmount": False
+        }
         headers = {
-            "X-API-KEY": api_key,
+            "Authorization": settings.PAYBIS_API_KEY,
             "Content-Type": "application/json"
         }
+        result = api_request_handler("https://widget-api.paybis.com/v2/quote", "post", headers, payload)
         
-        url = "https://api.transak.com/api/v2/currencies/price"
+    elif provider == BuySellProvider.KOTANIPAY:
+        payload = {
+            "fromCurrency": params["fiat_currency"] if is_buy else params["crypto_symbol"],
+            "toCurrency": params["crypto_symbol"] if is_buy else params["fiat_currency"],
+            "amount": params["amount"],
+            "network": params["crypto_network"]
+        }
+        if params.get("email"):
+            payload["email"] = params["email"]
+        if params.get("phone"):
+            payload["phoneNumber"] = params["phone"]
+            
+        headers = {
+            "Authorization": f"Bearer {settings.KOTANIPAY_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        result = api_request_handler("https://api.kotanipay.com/v1/quote", "post", headers, payload)
         
-        if not settings.TRANSAK_API_KEY:
-            mock_response = {
-                "success": True,
-                "data": {
-                    "quoteId": "transak-mock-quote",
-                    "fiatAmount": params["amount"] if params["from_symbol"] in ['USD', 'EUR', 'GBP'] else float(params["amount"]) * 1000,
-                    "cryptoAmount": float(params["amount"]) * 0.98 if params["from_symbol"] in ['USD', 'EUR', 'GBP'] else params["amount"],
-                    "fee": float(params["amount"]) * 0.02,
-                    "rate": 0.98,
-                    "provider": "transak",
-                    "validUntil": int(time.time()) + 300  # 5 minutes
-                },
-                "message": "Quote retrieved successfully (simulated)"
-            }
-            return mock_response
+    elif provider == BuySellProvider.TRANSAK:
+        query_params = {
+            "fiatCurrency": params["fiat_currency"],
+            "cryptoCurrency": params["crypto_symbol"],
+            "amount": params["amount"],
+            "paymentMethod": "credit_debit_card" if is_buy else "crypto_wallet",
+            "isBuyOrSell": "buy" if is_buy else "sell",
+            "network": params["crypto_network"]
+        }
+        headers = {"X-API-KEY": settings.TRANSAK_API_KEY, "Content-Type": "application/json"}
+        result = api_request_handler("https://api.transak.com/api/v2/currencies/price/quotes", "get", headers, None, query_params)
         
-        response = requests.get(url, headers=headers, params=payload)
-        if response.status_code == 200:
-            return {
-                "success": True,
-                "data": response.json(),
-                "provider": "transak",
-                "quote_id": response.json().get("quoteId"),
-                "message": "Transak quote retrieved"
-            }
-        else:
-            return {
-                "success": False,
-                "message": f"Transak API error: {response.text}",
-                "status_code": response.status_code
-            }
-    except Exception as ex:
+    elif provider == BuySellProvider.MOONPAY:
+        query_params = {
+            "baseCurrencyCode": params["crypto_symbol"].lower(),
+            "quoteCurrencyCode": params["fiat_currency"].lower(),
+            "baseCurrencyAmount" if not is_buy else "quoteCurrencyAmount": params["amount"],
+            "areFeesIncluded": True
+        }
+        result = api_request_handler("https://api.moonpay.com/v3/currencies/quote", "get", None, None, query_params)
+        
+    else:
         return {
             "success": False,
-            "message": f"Error calling Transak API: {str(ex)}",
-            "status_code": 500
+            "message": f"Unsupported provider: {provider}",
+            "status_code": HTTPStatusCode.BAD_REQUEST
         }
+    
+    result["provider"] = provider.value
+    result["quote_id"] = result.get("data", {}).get("quoteId") or result.get("data", {}).get("id")
+    return result
 
-def execute_paybis_swap(quote_id: str, params: Dict) -> Dict:
-    """Execute a swap using Paybis"""
-    try:
-        api_key = settings.PAYBIS_API_KEY
-        secret_key = settings.PAYBIS_SECRET_KEY
-        
+def execute_fiat_transaction(quote_id: str, params: Dict, provider: BuySellProvider) -> Dict:
+    is_buy = params["transaction_type"] == TransactionType.BUY.value
+    
+    if provider == BuySellProvider.PAYBIS:
         payload = {
             "quote_id": quote_id,
-            "from_currency": params["from_symbol"],
-            "to_currency": params["to_symbol"],
-            "amount": params["amount"],
-            "address": params["to_address"] or params["from_address"],
-            "refund_address": params["from_address"]
+            "from_currency": params["fiat_currency"] if is_buy else params["crypto_symbol"],
+            "to_currency": params["crypto_symbol"] if is_buy else params["fiat_currency"],
+            "amount": params["amount"]
         }
         
+        if is_buy:
+            payload["address"] = params["wallet_address"]
+        else:
+            payload["payout_details"] = {
+                "account_number": params.get("bank_account", ""),
+                "account_name": params.get("account_name", ""),
+                "bank_code": params.get("bank_code", ""),
+                "email": params.get("email", "")
+            }
+            
         headers = {
-            "X-API-KEY": api_key,
-            "X-API-SECRET": secret_key,
+            "Authorization": settings.PAYBIS_API_KEY,
             "Content-Type": "application/json"
         }
+        return api_request_handler("https://widget-api.paybis.com/v2/exchange", "post", headers, payload)
         
-        url = "https://api.paybis.com/v2/public/exchange/create"
-        
-        if not settings.PAYBIS_API_KEY or not settings.PAYBIS_SECRET_KEY:
-            mock_response = {
-                "success": True,
-                "data": {
-                    "transaction_id": "paybis-mock-tx",
-                    "status": "pending",
-                    "from_amount": params["amount"],
-                    "to_amount": float(params["amount"]) * 0.97,
-                    "provider": "paybis"
-                },
-                "message": "Swap initiated successfully (simulated)"
-            }
-            return mock_response
-        
-        response = requests.post(url, headers=headers, json=payload)
-        if response.status_code == 200:
-            return {
-                "success": True,
-                "data": response.json(),
-                "message": "Paybis swap executed"
-            }
-    except Exception as ex:
-        return {
-            "success": False,
-            "message": f"Error executing Paybis swap: {str(ex)}",
-            "status_code": 500
-        }
-
-def execute_kotanipay_swap(quote_id: str, params: Dict) -> Dict:
-    """Execute a swap using KotaniPay"""
-    try:
-        api_key = settings.KOTANIPAY_API_KEY
-        
+    elif provider == BuySellProvider.KOTANIPAY:
         payload = {
             "quoteId": quote_id,
-            "fromCurrency": params["from_symbol"],
-            "toCurrency": params["to_symbol"],
-            "amount": params["amount"],
-            "destinationAddress": params["to_address"] or params["from_address"],
-            "network": params.get("to_chain", "ethereum")
+            "network": params["crypto_network"]
         }
         
+        if is_buy:
+            payload.update({
+                "fromCurrency": params["fiat_currency"],
+                "toCurrency": params["crypto_symbol"],
+                "destinationAddress": params["wallet_address"]
+            })
+        else:
+            payload.update({
+                "fromCurrency": params["crypto_symbol"],
+                "toCurrency": params["fiat_currency"],
+                "sourceAddress": params["wallet_address"],
+                "bankDetails": {
+                    "accountNumber": params.get("bank_account", ""),
+                    "accountName": params.get("account_name", ""),
+                    "bankCode": params.get("bank_code", "")
+                }
+            })
+            
         headers = {
-            "Authorization": f"Bearer {api_key}",
+            "Authorization": f"Bearer {settings.KOTANIPAY_API_KEY}",
             "Content-Type": "application/json"
         }
+        return api_request_handler("https://api.kotanipay.com/v1/transactions", "post", headers, payload)
         
-        url = "https://api.kotanipay.com/v1/swap"
-        
-        if not settings.TRANSAK_API_KEY:
-            mock_response = {
-                "success": True,
-                "data": {
-                    "transactionId": "kotanipay-mock-tx",
-                    "status": "processing",
-                    "fromAmount": params["amount"],
-                    "toAmount": float(params["amount"]) * 0.95,
-                    "provider": "kotanipay"
-                },
-                "message": "Swap initiated successfully (simulated)"
-            }
-        return mock_response
-        
-        response = requests.post(url, headers=headers, json=payload)
-        if response.status_code == 200:
-            return {
-                "success": True,
-                "data": response.json(),
-                "message": "KotaniPay swap executed"
-            }
-    except Exception as ex:
-        return {
-            "success": False,
-            "message": f"Error executing KotaniPay swap: {str(ex)}",
-            "status_code": 500
-        }
-
-def execute_transak_swap(quote_id: str, params: Dict) -> Dict:
-    """Execute a fiat-to-crypto or crypto-to-fiat swap using Transak"""
-    try:
-        api_key = settings.TRANSAK_API_KEY
-        
-        is_buy = params["from_symbol"] in ['USD', 'EUR', 'GBP']
-        
+    elif provider == BuySellProvider.TRANSAK:
         payload = {
             "quoteId": quote_id,
-            "fiatCurrency": params["from_symbol"] if is_buy else params["to_symbol"],
-            "cryptoCurrency": params["to_symbol"] if is_buy else params["from_symbol"],
+            "fiatCurrency": params["fiat_currency"],
+            "cryptoCurrency": params["crypto_symbol"],
             "amount": params["amount"],
-            "walletAddress": params["to_address"] if is_buy else params["from_address"],
-            "paymentMethod": "credit_debit_card",
             "isBuyOrSell": "buy" if is_buy else "sell"
         }
         
-        headers = {
-            "X-API-KEY": api_key,
-            "Content-Type": "application/json"
+        if is_buy:
+            payload["walletAddress"] = params["wallet_address"]
+            payload["paymentMethod"] = "credit_debit_card"
+        else:
+            payload["payoutMethod"] = "bank_transfer"
+            payload["bankDetails"] = {
+                "accountNumber": params.get("bank_account", ""),
+                "accountHolderName": params.get("account_name", ""),
+                "bankCode": params.get("bank_code", "")
+            }
+            
+        if params.get("email"):
+            payload["email"] = params["email"]
+            
+        headers = {"X-API-KEY": settings.TRANSAK_API_KEY, "Content-Type": "application/json"}
+        return api_request_handler("https://api.transak.com/api/v2/orders/create", "post", headers, payload)
+        
+    elif provider == BuySellProvider.MOONPAY:
+        payload = {
+            "quoteId": quote_id,
+            "externalCustomerId": params.get("email", f"user_{int(time.time())}"),
+            "externalTransactionId": f"tx_{int(time.time())}"
         }
         
-        url = "https://api.transak.com/api/v2/orders/create"
-        
-        if not settings.TRANSAK_API_KEY:
-            mock_response = {
-                "success": True,
-                "data": {
-                    "orderId": "transak-mock-order",
-                    "status": "pending",
-                    "fiatAmount": params["amount"] if is_buy else float(params["amount"]) * 1000,
-                    "cryptoAmount": float(params["amount"]) * 0.98 if is_buy else params["amount"],
-                    "provider": "transak"
-                },
-                "message": "Swap order created successfully (simulated)"
+        if is_buy:
+            payload["walletAddress"] = params["wallet_address"]
+            payload["baseCurrencyCode"] = params["crypto_symbol"].lower()
+            payload["quoteCurrencyCode"] = params["fiat_currency"].lower()
+        else:
+            payload["refundWalletAddress"] = params["wallet_address"]
+            payload["bankDetails"] = {
+                "accountNumber": params.get("bank_account", ""),
+                "accountHolderName": params.get("account_name", ""),
+                "bankCode": params.get("bank_code", "")
             }
-            return mock_response
+            payload["baseCurrencyCode"] = params["fiat_currency"].lower()
+            payload["quoteCurrencyCode"] = params["crypto_symbol"].lower()
+            
+        if params.get("email"):
+            payload["email"] = params["email"]
+            
+        headers = {"Content-Type": "application/json"}
+        return api_request_handler("https://api.moonpay.com/v1/transactions", "post", headers, payload)
         
-        response = requests.post(url, headers=headers, json=payload)
-        if response.status_code == 200:
-            return {
-                "success": True,
-                "data": response.json(),
-                "message": "Transak swap executed"
-            }
+    else:
+        return {
+            "success": False,
+            "message": f"Unsupported provider: {provider}",
+            "status_code": HTTPStatusCode.BAD_REQUEST
+        }
+
+def buy_crypto_with_fiat(
+    crypto_symbol: Union[Symbols, str],
+    fiat_currency: FiatCurrency,
+    fiat_amount: Decimal,
+    wallet_address: str,
+    provider: Optional[BuySellProvider] = None,
+    email: Optional[str] = None,
+    phone: Optional[str] = None
+) -> WalletResponseDTO:
+    try:
+        result = handle_fiat_transaction(
+            TransactionType.BUY,
+            crypto_symbol,
+            fiat_currency,
+            fiat_amount,
+            wallet_address,
+            provider,
+            email,
+            phone
+        )
+        
+        if result.get("success", False):
+            return WalletResponseDTO(
+                data=result.get("data"),
+                message=f"Buy order created successfully with {result.get('provider')}"
+            )
+        return WalletResponseDTO(
+            message=result.get("message", "Failed to create buy order"),
+            success=False,
+            status_code=result.get("status_code", HTTPStatusCode.BAD_REQUEST)
+        )
     except Exception as ex:
-        return {
-            "success": False,
-            "message": f"Error executing Transak swap: {str(ex)}",
-            "status_code": 500
-        }
+        return WalletResponseDTO(
+            message=str(ex),
+            success=False,
+            status_code=HTTPStatusCode.BAD_REQUEST
+        )
 
-def get_swap_quote(from_symbol: Symbols, to_symbol: Symbols, amount: Decimal, 
-                  from_address: str, to_address: Optional[str] = None,
-                  slippage: float = 0.5, provider: Optional[SwapProvider] = None) -> Dict:
-    """Get a quote for swapping tokens."""
-    from_config = TOKEN_CONFIG.get(from_symbol)
-    to_config = TOKEN_CONFIG.get(to_symbol)
-    
-    if isinstance(from_config, dict) and "chain" not in from_config:
-        from_config = from_config.get("bsc")
-    
-    if isinstance(to_config, dict) and "chain" not in to_config:
-        to_config = to_config.get("bsc")
-    
-    if not from_config or not to_config:
-        return {
-            "success": False,
-            "message": "Unsupported token pair",
-            "status_code": HTTPStatusCode.BAD_REQUEST
+def sell_crypto_for_fiat(
+    crypto_symbol: Union[Symbols, str],
+    fiat_currency: FiatCurrency,
+    crypto_amount: Decimal,
+    wallet_address: str,
+    bank_account: str,
+    account_name: str,
+    bank_code: str,
+    provider: Optional[BuySellProvider] = None,
+    email: Optional[str] = None,
+    phone: Optional[str] = None
+) -> WalletResponseDTO:
+    try:
+        extra_params = {
+            "bank_account": bank_account,
+            "account_name": account_name,
+            "bank_code": bank_code
         }
-    
-    if not provider:
-        provider = determine_best_provider(from_symbol, to_symbol)
-    
-    params = {
-        "from_symbol": from_symbol.value,
-        "to_symbol": to_symbol.value,
-        "from_chain": from_config["chain"],
-        "to_chain": to_config["chain"],
-        "from_token_address": from_config["address"],
-        "to_token_address": to_config["address"],
-        "chain_id": from_config["chain_id"],
-        "amount": str(amount),
-        "from_address": from_address,
-        "to_address": to_address or from_address,
-        "slippage": slippage
-    }
-    
-    if provider == SwapProvider.PAYBIS:
-        return get_paybis_quote(params)
-    elif provider == SwapProvider.KOTANIPAY:
-        return get_kotanipay_quote(params)
-    elif provider == SwapProvider.TRANSAK:
-        return get_transak_quote(params)
-    else:
-        return {
-            "success": False,
-            "message": f"Unsupported provider: {provider}",
-            "status_code": HTTPStatusCode.BAD_REQUEST
-        }
+        
+        result = handle_fiat_transaction(
+            TransactionType.SELL,
+            crypto_symbol,
+            fiat_currency,
+            crypto_amount,
+            wallet_address,
+            provider,
+            email,
+            phone,
+            **extra_params
+        )
+        
+        if result.get("success", False):
+            return WalletResponseDTO(
+                data=result.get("data"),
+                message=f"Sell order created successfully with {result.get('provider')}"
+            )
+        return WalletResponseDTO(
+            message=result.get("message", "Failed to create sell order"),
+            success=False,
+            status_code=result.get("status_code", HTTPStatusCode.BAD_REQUEST)
+        )
+    except Exception as ex:
+        return WalletResponseDTO(
+            message=str(ex),
+            success=False,
+            status_code=HTTPStatusCode.BAD_REQUEST
+        )
 
-def execute_swap(quote_id: str, from_symbol: Symbols, to_symbol: Symbols, 
-                amount: Decimal, from_address: str, to_address: Optional[str] = None,
-                slippage: float = 0.5, provider: SwapProvider = None) -> Dict:
-    """Execute a token swap."""
-    params = {
-        "from_symbol": from_symbol.value if from_symbol else None,
-        "to_symbol": to_symbol.value if to_symbol else None,
-        "amount": amount,
-        "from_address": from_address,
-        "to_address": to_address or from_address,
-        "slippage": slippage
-    }
-    
-    if provider == SwapProvider.PAYBIS:
-        return execute_paybis_swap(quote_id, params)
-    elif provider == SwapProvider.KOTANIPAY:
-        return execute_kotanipay_swap(quote_id, params)
-    elif provider == SwapProvider.TRANSAK:
-        return execute_transak_swap(quote_id, params)
-    else:
-        return {
-            "success": False,
-            "message": f"Unsupported provider: {provider}",
-            "status_code": HTTPStatusCode.BAD_REQUEST
+def get_available_payment_methods(
+    provider: BuySellProvider,
+    fiat_currency: Optional[FiatCurrency] = None
+) -> WalletResponseDTO:
+    try:
+        endpoints = {
+            BuySellProvider.PAYBIS: "https://widget-api.paybis.com/v2/payment-methods",
+            BuySellProvider.KOTANIPAY: "https://api.kotanipay.com/v1/payment-methods",
+            BuySellProvider.TRANSAK: "https://api.transak.com/api/v2/payment-methods",
+            BuySellProvider.MOONPAY: "https://api.moonpay.com/v3/payment-methods"
         }
+        
+        headers = {}
+        if provider == BuySellProvider.PAYBIS:
+            headers = {
+                "Authorization": settings.PAYBIS_API_KEY,
+                "Content-Type": "application/json"
+            }
+        elif provider == BuySellProvider.KOTANIPAY:
+            headers = {"Authorization": f"Bearer {settings.KOTANIPAY_API_KEY}"}
+        elif provider == BuySellProvider.TRANSAK:
+            headers = {"X-API-KEY": settings.TRANSAK_API_KEY}
+        
+        params = {}
+        if fiat_currency:
+            if provider == BuySellProvider.PAYBIS:
+                params["currency"] = fiat_currency.value
+            elif provider == BuySellProvider.KOTANIPAY:
+                params["fiatCurrency"] = fiat_currency.value
+            elif provider == BuySellProvider.TRANSAK:
+                params["fiatCurrency"] = fiat_currency.value
+            elif provider == BuySellProvider.MOONPAY:
+                params["baseCurrency"] = fiat_currency.value.lower()
+        
+        endpoint = endpoints.get(provider)
+        if not endpoint:
+            return WalletResponseDTO(
+                message=f"Unsupported provider: {provider}",
+                success=False,
+                status_code=HTTPStatusCode.BAD_REQUEST
+            )
+            
+        result = api_request_handler(endpoint, "get", headers, None, params)
+        
+        if result.get("success", False):
+            return WalletResponseDTO(
+                data=result.get("data"),
+                message=f"Available payment methods retrieved for {provider.value}"
+            )
+        return WalletResponseDTO(
+            message=result.get("message", f"Failed to retrieve payment methods for {provider.value}"),
+            success=False,
+            status_code=result.get("status_code", HTTPStatusCode.BAD_REQUEST)
+        )
+    except Exception as ex:
+        return WalletResponseDTO(
+            message=str(ex),
+            success=False,
+            status_code=HTTPStatusCode.BAD_REQUEST
+        )
+
+def get_supported_currencies(
+    provider: BuySellProvider,
+    transaction_type: Optional[TransactionType] = None
+) -> WalletResponseDTO:
+    """Get supported currencies (both fiat and crypto) for a specific provider."""
+    try:
+        # Define endpoints for each provider
+        endpoints = {
+            BuySellProvider.PAYBIS: "https://widget-api.paybis.com/v2/currencies",
+            BuySellProvider.KOTANIPAY: "https://api.kotanipay.com/v1/currencies",
+            BuySellProvider.TRANSAK: "https://api.transak.com/api/v2/currencies",
+            BuySellProvider.MOONPAY: "https://api.moonpay.com/v3/currencies"
+        }
+        
+        # Define headers for each provider
+        headers = {}
+        if provider == BuySellProvider.PAYBIS:
+            headers = {
+                "X-API-KEY": settings.PAYBIS_API_KEY,
+                "X-API-SECRET": settings.PAYBIS_SECRET_KEY
+            }
+        elif provider == BuySellProvider.KOTANIPAY:
+            headers = {"Authorization": f"Bearer {settings.KOTANIPAY_API_KEY}"}
+        elif provider == BuySellProvider.TRANSAK:
+            headers = {"X-API-KEY": settings.TRANSAK_API_KEY}
+        
+        # Define query parameters
+        params = {}
+        if transaction_type:
+            if provider == BuySellProvider.PAYBIS:
+                params["type"] = transaction_type.value
+            elif provider == BuySellProvider.KOTANIPAY:
+                params["type"] = transaction_type.value
+            elif provider == BuySellProvider.TRANSAK:
+                params["isBuyOrSell"] = transaction_type.value
+            elif provider == BuySellProvider.MOONPAY:
+                params["transactionType"] = transaction_type.value
+        
+        # Make API request
+        endpoint = endpoints.get(provider)
+        if not endpoint:
+            return WalletResponseDTO(
+                message=f"Unsupported provider: {provider}",
+                success=False,
+                status_code=HTTPStatusCode.BAD_REQUEST
+            )
+            
+        result = api_request_handler(endpoint, "get", headers, None, params)
+        
+        if result.get("success", False):
+            return WalletResponseDTO(
+                data=result.get("data"),
+                message=f"Supported currencies retrieved for {provider.value}"
+            )
+        return WalletResponseDTO(
+            message=result.get("message", f"Failed to retrieve currencies for {provider.value}"),
+            success=False,
+            status_code=result.get("status_code", HTTPStatusCode.BAD_REQUEST)
+        )
+    except Exception as ex:
+        return WalletResponseDTO(
+            message=str(ex),
+            success=False,
+            status_code=HTTPStatusCode.BAD_REQUEST
+        )

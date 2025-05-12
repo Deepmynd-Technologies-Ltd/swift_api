@@ -96,3 +96,36 @@ Features:
 - Slippage tolerance configuration
 - Returns transaction data for wallet signing (never handles private keys)
 """
+
+buy_crypto_description = """
+Allows users to purchase cryptocurrencies using credit/debit cards or bank transfers.
+Supported Cryptocurrencies:
+- BTC, DOGE, BNB, ETH, SOL, USDT (BEP20/ERC20)
+- Provides a seamless experience for users to acquire crypto assets
+- Integrates with third-party payment processors for secure transactions
+"""
+
+sell_crypto_description = """
+Allows users to sell cryptocurrencies for fiat currency.
+Supported Cryptocurrencies:
+- BTC, DOGE, BNB, ETH, SOL, USDT (BEP20/ERC20)
+- Provides a seamless experience for users to convert crypto assets to fiat
+- Integrates with third-party payment processors for secure transactions
+"""
+
+payment_methods_description = """
+Fetches available payment methods for buying/selling cryptocurrencies.
+- Supports various fiat currencies and payment options
+- Integrates with third-party payment processors for secure transactions
+- Provides users with a list of available payment options based on their location
+"""
+
+currencies_description = """
+Fetches the list of supported cryptocurrencies for trading.
+- Provides detailed information about each cryptocurrency
+- Integrates with third-party exchanges for real-time data
+- Ensures users have access to the latest information about supported assets
+"""
+
+
+
