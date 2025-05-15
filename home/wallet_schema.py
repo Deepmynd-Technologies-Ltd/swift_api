@@ -124,23 +124,21 @@ class SwapStepTransactionRequest(BaseModel):
     to_address: Optional[str] = None
     slippage: Optional[float] = 0.5
 
-class SwapPrepareResponse(BaseModel):
-    transaction_data: Dict[str, Any]
-    chain_id: Union[int, str]
-    token_transfer: Optional[Dict[str, Any]] = None
-    provider: str
-    preparation_timestamp: int
-
 class SwapStatusRequest(BaseModel):
     tx_hash: str
 
-class SwapExecuteRequest(BaseModel):
+class SwapPrepareRequest(BaseModel):
     from_symbol: Union[Symbols, str]
     to_symbol: Union[Symbols, str]
     amount: Union[str, float, Decimal]
     from_address: str
     to_address: Optional[str] = None
     slippage: Optional[float] = 0.5
+
+class SwapExecuteRequest(SwapPrepareRequest):
+    private_key: str
+    web3_provider_url: str
+    gas_multiplier: Optional[float] = 1.1
 
 class SwapTransaction(BaseModel):
     from_address: str

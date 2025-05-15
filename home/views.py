@@ -12,7 +12,7 @@ from helper.coingeko_api import get_coins_value
 from home.wallet_schema import (
     PhraseRequest, SendTransactionDTO, Symbols, 
     TransactionsInfo, WalletInfoResponse, WalletResponseDTO,
-    SwapQuoteRequest, SwapExecuteRequest, HTTPStatusCode,
+    SwapQuoteRequest, SwapPrepareRequest, SwapExecuteRequest, HTTPStatusCode,
     FiatCurrency, TransactionType, BuySellProvider,
     BuyCryptoRequest, SellCryptoRequest,
     PaymentMethodsRequest, CurrenciesRequest
@@ -20,8 +20,8 @@ from home.wallet_schema import (
 from home.wallet_services import (
     generate_secrete_phrases, import_from_phrases,
     get_wallet_balance, get_all_transactions_history,
-    send_crypto_transaction, get_swap_quote, execute_swap,
-    get_swap_status,
+    send_crypto_transaction, get_swap_quote, prepare_swap,
+    process_swap, get_swap_status,
     buy_crypto_with_fiat, sell_crypto_for_fiat,
     get_available_payment_methods, get_supported_currencies
 )
@@ -63,12 +63,12 @@ def send_transactions(request, symbol: Symbols, req: SendTransactionDTO):
     val = send_crypto_transaction(symbol, req)
     return wallet_system.api.create_response(request, val, status=val.status_code)
 
-@wallet_system.post("swap/execute/", response=WalletResponseDTO[Dict],
-description="Execute a token swap in one step", summary="Execute Token Swap")
-def execute_swap_endpoint(request, req: SwapExecuteRequest):
+@wallet_system.post("swap/prepare/", response=WalletResponseDTO[Dict],
+description="Preapre token swap", summary="Prepare Token Swap")
+def prepare_swap_endpoint(request, req: SwapPrepareRequest):
     try:
-        # Execute the swap using the unified function
-        swap_result = execute_swap(
+        # Prepare the swap using the unified function
+        swap_result = prepare_swap(
             from_symbol=req.from_symbol,
             to_symbol=req.to_symbol,
             amount=req.amount,
@@ -89,7 +89,55 @@ def execute_swap_endpoint(request, req: SwapExecuteRequest):
             status=swap_result.get("status_code", HTTPStatusCode.OK)
         )
     except Exception as ex:
-        error_message = f"Failed to execute swap in views: {str(ex)}"
+        error_message = f"Failed to prepare swap in views: {str(ex)}"
+        return wallet_system.api.create_response(
+            request,
+            WalletResponseDTO(
+                message=error_message,
+                success=False,
+                status_code=HTTPStatusCode.INTERNAL_SERVER_ERROR
+            ),
+            status=HTTPStatusCode.INTERNAL_SERVER_ERROR
+        )
+
+@wallet_system.post("swap/", response=WalletResponseDTO, description="Prepare and execute token swap", summary="Process Token Swap")
+def process_swap_endpoint(request, req: SwapExecuteRequest):
+    """
+    Unified endpoint that can either prepare or execute a swap based on provided parameters.
+    If private_key and web3_provider_url are provided, it will execute the swap.
+    Otherwise, it will only prepare the transaction.
+    """
+    try:
+        # Determine if we should execute based on presence of private key and web3 provider
+        execute = bool(req.private_key and req.web3_provider_url)
+        
+        # Process the swap with appropriate execution flag
+        swap_result = process_swap(
+            from_symbol=req.from_symbol,
+            to_symbol=req.to_symbol,
+            amount=req.amount,
+            from_address=req.from_address,
+            to_address=req.to_address,
+            slippage=req.slippage or 0.5,
+            order="RECOMMENDED",
+            execute=execute,
+            private_key=req.private_key if execute else None,
+            web3_provider_url=req.web3_provider_url if execute else None,
+            gas_multiplier=req.gas_multiplier or 1.1
+        )
+        
+        return wallet_system.api.create_response(
+            request,
+            WalletResponseDTO(
+                data=swap_result.get("data"),
+                message=swap_result.get("message"),
+                success=swap_result.get("success", False),
+                status_code=swap_result.get("status_code", HTTPStatusCode.OK)
+            ),
+            status=swap_result.get("status_code", HTTPStatusCode.OK)
+        )
+    except Exception as ex:
+        error_message = f"Failed to process swap in views: {str(ex)}"
         return wallet_system.api.create_response(
             request,
             WalletResponseDTO(

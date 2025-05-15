@@ -3,6 +3,8 @@ import requests
 from decimal import Decimal
 from enum import Enum
 import time
+from web3 import Web3
+from http import HTTPStatus
 from django.conf import settings
 from home.wallet_schema import (
     Symbols, SendTransactionDTO, WalletResponseDTO, HTTPStatusCode,
@@ -317,7 +319,7 @@ def get_swap_status(tx_hash: str) -> Dict:
             "exception_type": e.__class__.__name__
         }
 
-def execute_swap(
+def prepare_swap(
     from_symbol: Union[str, int],
     to_symbol: Union[str, int],
     amount: Union[str, float, Decimal],
@@ -419,6 +421,206 @@ def execute_swap(
         return {
             "success": False,
             "message": f"Failed to execute swap: {error_msg}",
+            "status_code": HTTPStatusCode.INTERNAL_SERVER_ERROR,
+            "exception_type": ex.__class__.__name__
+        }
+
+def process_swap(
+    from_symbol: Union[str, int],
+    to_symbol: Union[str, int],
+    amount: Union[str, float, Decimal],
+    from_address: str,
+    to_address: Optional[str] = None,
+    slippage: float = 0.5,
+    order: str = "RECOMMENDED",
+    execute: bool = False,
+    private_key: Optional[str] = None,
+    web3_provider_url: Optional[str] = None,
+    gas_multiplier: float = 1.1
+) -> Dict:
+    """
+    Unified function to handle the entire swap process:
+    1. Get a swap quote
+    2. Prepare the transaction data
+    3. Optionally execute the transaction if requested
+    
+    Args:
+        from_symbol: Source chain symbol (e.g., "BNB", "ETH")
+        to_symbol: Destination chain symbol
+        amount: Amount to swap
+        from_address: Source wallet address
+        to_address: Destination wallet address (optional, defaults to from_address if not specified)
+        slippage: Slippage tolerance percentage (default: 0.5%)
+        order: Order type (default: "RECOMMENDED")
+        execute: Whether to execute the swap transaction (default: False)
+        private_key: Private key for transaction signing (required if execute=True)
+        web3_provider_url: Web3 provider URL (required if execute=True)
+        gas_multiplier: Gas limit multiplier for safety (default: 1.1)
+        
+    Returns:
+        Dictionary containing success status, message, and data
+    """
+    try:
+        # Step 1: Get the swap quote and prepare transaction
+        prepare_result = get_swap_quote(
+            from_chain=str(from_symbol),
+            to_chain=str(to_symbol),
+            from_token="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            to_token="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            amount=amount,
+            from_address=from_address,
+            to_address=to_address,
+            slippage=slippage,
+            order=order
+        )
+        
+        if not prepare_result.get("success"):
+            return prepare_result
+
+        quote_data = prepare_result.get("data", {})
+        
+        # Prepare the step payload with all required fields
+        step_data = {
+            "id": quote_data.get("id"),
+            "type": "lifi",  # Set type to 'lifi'
+            "tool": quote_data.get("tool"),
+            "toolDetails": quote_data.get("toolDetails", {}),
+            "action": quote_data.get("action", {}),
+            "estimate": quote_data.get("estimate", {}),
+            "integrator": quote_data.get("integrator", "lifi-api"),
+            "fromAddress": from_address,
+            "slippage": slippage / 100,
+            "includedSteps": quote_data.get("includedSteps", [])  # Add includedSteps from quote
+        }
+        
+        # Add toAddress if provided
+        if to_address:
+            step_data["toAddress"] = to_address
+
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }
+        
+        if hasattr(settings, 'LIFI_API_KEY') and settings.LIFI_API_KEY:
+            headers["x-lifi-api-key"] = settings.LIFI_API_KEY
+
+        # Make the API request to get transaction data
+        response = requests.post(
+            "https://li.quest/v1/advanced/stepTransaction",
+            headers=headers,
+            json=step_data
+        )
+
+        if response.status_code != 200:
+            return {
+                "success": False,
+                "message": f"LiFi API error: {response.text}",
+                "status_code": response.status_code,
+                "data": response.json() if response.content else {}
+            }
+
+        transaction_data = response.json()
+        
+        # Combine all the data into the desired format
+        result = {
+            "type": quote_data.get("type", "lifi"),
+            "toolDetails": quote_data.get("toolDetails", {}),
+            "action": quote_data.get("action", {}),
+            "estimate": quote_data.get("estimate", {}),
+            "id": quote_data.get("id"),
+            "tool": quote_data.get("tool"),
+            "integrator": quote_data.get("integrator", "lifi-api"),
+            "includedSteps": quote_data.get("includedSteps", []),
+            "transactionRequest": transaction_data.get("transactionRequest", {})
+        }
+
+        prepare_response = {
+            "success": True,
+            "message": "Swap execution prepared successfully",
+            "status_code": HTTPStatusCode.OK,
+            "data": result
+        }
+        
+        # Return early if we're only preparing
+        if not execute:
+            return prepare_response
+            
+        # Step 2: Execute the transaction if requested
+        if not private_key or not web3_provider_url:
+            return {
+                "success": False,
+                "message": "Private key and Web3 provider URL are required for execution",
+                "status_code": HTTPStatusCode.BAD_REQUEST
+            }
+            
+        transaction_request = transaction_data.get("transactionRequest", {})
+        if not transaction_request:
+            return {
+                "success": False,
+                "message": "Transaction request data is missing",
+                "status_code": HTTPStatusCode.BAD_REQUEST
+            }
+            
+        # Initialize Web3 connection
+        w3 = Web3(Web3.HTTPProvider(web3_provider_url))
+        if not w3.is_connected():
+            return {
+                "success": False,
+                "message": "Failed to connect to Web3 provider",
+                "status_code": HTTPStatusCode.INTERNAL_SERVER_ERROR
+            }
+
+        # Get the account from private key
+        account = w3.eth.account.from_key(private_key)
+        
+        # Prepare transaction parameters
+        tx_params = {
+            'chainId': transaction_request['chainId'],
+            'to': Web3.to_checksum_address(transaction_request['to']),
+            'value': int(transaction_request['value'], 16) if isinstance(transaction_request['value'], str) else transaction_request['value'],
+            'data': transaction_request['data'],
+            'from': account.address,
+            'gasPrice': int(transaction_request['gasPrice'], 16) if isinstance(transaction_request['gasPrice'], str) else transaction_request['gasPrice'],
+            'nonce': w3.eth.get_transaction_count(account.address),
+        }
+
+        # Estimate gas with a multiplier for safety
+        estimated_gas = w3.eth.estimate_gas(tx_params)
+        tx_params['gas'] = int(estimated_gas * gas_multiplier)
+
+        # Sign the transaction
+        signed_tx = w3.eth.account.sign_transaction(tx_params, private_key)
+
+        # Send the transaction
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        tx_hash_hex = tx_hash.hex()
+
+        # Return the execution result along with preparation data
+        return {
+            "success": True,
+            "message": "Swap transaction executed successfully",
+            "status_code": HTTPStatusCode.OK,
+            "data": {
+                "preparation": result,
+                "execution": {
+                    "transactionHash": tx_hash_hex,
+                    "fromAddress": account.address,
+                    "toAddress": tx_params['to'],
+                    "chainId": tx_params['chainId'],
+                    "value": str(tx_params['value']),
+                    "gasPrice": str(tx_params['gasPrice']),
+                    "gasLimit": str(tx_params['gas']),
+                    "nonce": tx_params['nonce']
+                }
+            }
+        }
+
+    except Exception as ex:
+        error_msg = str(ex) or "Unknown error occurred during swap process"
+        return {
+            "success": False,
+            "message": f"Failed to process swap: {error_msg}",
             "status_code": HTTPStatusCode.INTERNAL_SERVER_ERROR,
             "exception_type": ex.__class__.__name__
         }
