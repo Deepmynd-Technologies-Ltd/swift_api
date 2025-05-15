@@ -239,7 +239,7 @@ def get_swap_quote(
                 error_msg = result["data"].get("message", error_msg)
             return {
                 "success": False,
-                "message": f"LiFi API error: {error_msg}",
+                "message": f"LiFi API error1: {error_msg}",
                 "status_code": result.get("status_code", HTTPStatusCode.BAD_REQUEST),
                 "data": result.get("data")
             }
@@ -348,24 +348,21 @@ def execute_swap(
         
         if not quote_result.get("success"):
             return quote_result
-        
+
         quote_data = quote_result.get("data", {})
-        
-        # Extract the first step from includedSteps if available
-        included_steps = quote_data.get("includedSteps", [])
-        first_step = included_steps[0] if included_steps else {}
         
         # Prepare the step payload with all required fields
         step_data = {
             "id": quote_data.get("id"),
-            "type": first_step.get("type", "cross"),  # Default to 'cross' if not specified
-            "tool": first_step.get("tool", quote_data.get("tool")),  # Get tool from first step or quote
-            "toolDetails": first_step.get("toolDetails", quote_data.get("toolDetails", {})),
-            "action": first_step.get("action", quote_data.get("action", {})),
-            "estimate": first_step.get("estimate", quote_data.get("estimate", {})),
+            "type": "lifi",  # Set type to 'lifi'
+            "tool": quote_data.get("tool"),
+            "toolDetails": quote_data.get("toolDetails", {}),
+            "action": quote_data.get("action", {}),
+            "estimate": quote_data.get("estimate", {}),
             "integrator": quote_data.get("integrator", "lifi-api"),
             "fromAddress": from_address,
-            "slippage": slippage / 100  # Convert percentage to decimal
+            "slippage": slippage / 100,
+            "includedSteps": quote_data.get("includedSteps", [])  # Add includedSteps from quote
         }
         
         # Add toAddress if provided
@@ -384,7 +381,7 @@ def execute_swap(
         response = requests.post(
             "https://li.quest/v1/advanced/stepTransaction",
             headers=headers,
-            json={"step": step_data}  # Properly structured step data
+            json=step_data
         )
 
         if response.status_code != 200:
@@ -397,14 +394,6 @@ def execute_swap(
 
         transaction_data = response.json()
         
-        if not transaction_data.get("success"):
-            return {
-                "success": False,
-                "message": transaction_data.get("message", "Unknown error from LiFi"),
-                "status_code": HTTPStatusCode.BAD_REQUEST,
-                "data": transaction_data
-            }
-
         # Combine all the data into the desired format
         result = {
             "type": quote_data.get("type", "lifi"),
@@ -415,7 +404,7 @@ def execute_swap(
             "tool": quote_data.get("tool"),
             "integrator": quote_data.get("integrator", "lifi-api"),
             "includedSteps": quote_data.get("includedSteps", []),
-            "transactionRequest": transaction_data.get("data", {})
+            "transactionRequest": transaction_data.get("transactionRequest", {})
         }
 
         return {

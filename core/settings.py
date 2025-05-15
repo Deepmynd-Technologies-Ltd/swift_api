@@ -177,6 +177,7 @@ PAYBIS_API_KEY = config("PAYBISKEY", default=None)
 PAYBIS_SECRET_KEY = config("PAYBISSECRETKEY", default=None)
 KOTANIPAY_API_KEY = config("KOTANIPAYKEY", default=None)
 TRANSAK_API_KEY = config("TRANSAKKEY", default=None)
+LIFI_API_KEY = config("LIFIKEY", default=None)
 
 NINJA_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
