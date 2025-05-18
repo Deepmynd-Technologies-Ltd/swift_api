@@ -34,6 +34,7 @@ class Symbols(str, Enum):
 
 class HTTPStatusCode(int, Enum):
     OK = 200
+    SUCCESS = 200
     CREATED = 201
     BAD_REQUEST = 400
     UNAUTHORIZED = 401
@@ -137,7 +138,6 @@ class SwapPrepareRequest(BaseModel):
 
 class SwapExecuteRequest(SwapPrepareRequest):
     private_key: str
-    web3_provider_url: str
     gas_multiplier: Optional[float] = 1.1
 
 class SwapTransaction(BaseModel):
@@ -171,45 +171,29 @@ class SwapStatusResponse(BaseModel):
     estimated_received: Optional[str] = None
     actual_received: Optional[str] = None
 
-class FiatCurrency(str, Enum):
-    USD = "usd"
-    EUR = "eur"
-    GBP = "gbp"
-    NGN = "ngn"
+class PaybisTransactionRequest(BaseModel):
+    from_currency_or_crypto: str
+    to_currency_or_crypto: str
+    amount: Decimal
+    partner_user_id: str = '4bb689aa-fd24-46fb-b793-e44c26d24e7a'
+    email: str
+    direction: str = 'from'
+    locale: str = 'en'
 
-class BuyCryptoRequest(BaseModel):
-    from_symbol: Symbols
-    to_symbol: FiatCurrency
-    amount: Union[str, float, Decimal]
-    from_address: str
-    to_address: Optional[str] = None
-    slippage: Optional[float] = 0.5
-    provider: Optional[BuySellProvider] = None
+class TransakTransactionRequest(BaseModel):
+    from_currency_or_crypto: str
+    to_currency_or_crypto: str
+    amount: Decimal
+    wallet_address: str
+    direction: str = 'from'
+    locale: str = 'en'
+    user_data: Optional[Dict] = None
 
-class SellCryptoRequest(BaseModel):
-    from_symbol: FiatCurrency
-    to_symbol: Symbols
-    amount: Union[str, float, Decimal]
-    from_address: str
-    to_address: Optional[str] = None
-    slippage: Optional[float] = 0.5
-    provider: Optional[BuySellProvider] = None
-
-class PaymentMethodsRequest(BaseModel):
-    from_symbol: Symbols
-    to_symbol: FiatCurrency
-    amount: Union[str, float, Decimal]
-    from_address: str
-    to_address: Optional[str] = None
-    slippage: Optional[float] = 0.5
-    provider: Optional[BuySellProvider] = None
-
-class CurrenciesRequest(BaseModel):
-    from_symbol: Symbols
-    to_symbol: FiatCurrency
-    amount: Union[str, float, Decimal]
-    from_address: str
-    to_address: Optional[str] = None
-    slippage: Optional[float] = 0.5
-    provider: Optional[BuySellProvider] = None
-
+class MoonPayTransactionRequest(BaseModel):
+    from_currency_or_crypto: str
+    to_currency_or_crypto: str
+    amount: Decimal
+    wallet_address: str
+    direction: str = 'from'
+    locale: str = 'en'
+    user_data: Optional[Dict] = None

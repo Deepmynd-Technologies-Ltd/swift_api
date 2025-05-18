@@ -87,45 +87,76 @@ Usage Example:
 }
 """
 
-swap_description = """
-Executes a token swap between supported assets, handling both intra-chain and cross-chain swaps.
+sixth_description = """
+Prepare and execute token swap
+If private_key is provided, it will execute the swap using the appropriate web3 provider.
+Otherwise, it will only prepare the transaction.
 
-Features:
-- Supports BNB (BEP20), BTC, DOGE, ETH, SOL, and USDT (BEP20)
-- Automatic routing through best available liquidity providers
-- Slippage tolerance configuration
-- Returns transaction data for wallet signing (never handles private keys)
+Returns:
+    WalletResponseDTO containing:
+    - data: Swap execution data (tx_hash for execute, quote data for prepare)
+    - quote_data: Detailed quote information (when preparing)
+    - message: Status message
+    - success: Boolean indicating operation status
+    - status_code: HTTP status code
 """
 
-buy_crypto_description = """
-Allows users to purchase cryptocurrencies using credit/debit cards or bank transfers.
-Supported Cryptocurrencies:
-- BTC, DOGE, BNB, ETH, SOL, USDT (BEP20/ERC20)
-- Provides a seamless experience for users to acquire crypto assets
-- Integrates with third-party payment processors for secure transactions
+seventh_description = """
+Process Paybis transaction (buy/sell) and return widget URL
+
+Args:
+    from_currency_or_crypto: Source currency/crypto code
+    to_currency_or_crypto: Target currency/crypto code
+    amount: Amount to exchange
+    partner_user_id: Your system's user ID
+    email: User email
+    direction: 'from' or 'to' (default 'from')
+    locale: Language locale (default 'en')
+
+Returns:
+    WalletResponseDTO containing:
+    - widget_url: URL for the Paybis widget
+    - transaction_type: 'buy' or 'sell'
+    - request_id: The Paybis request ID
+    Or error information if unsuccessful
 """
 
-sell_crypto_description = """
-Allows users to sell cryptocurrencies for fiat currency.
-Supported Cryptocurrencies:
-- BTC, DOGE, BNB, ETH, SOL, USDT (BEP20/ERC20)
-- Provides a seamless experience for users to convert crypto assets to fiat
-- Integrates with third-party payment processors for secure transactions
+eight_description = """
+Process Transak transaction (buy/sell) and return widget URL
+
+Args:
+    from_currency_or_crypto: Source currency/crypto code
+    to_currency_or_crypto: Target currency/crypto code
+    amount: Amount to exchange
+    wallet_address: User's wallet address
+    direction: 'from' or 'to' (default 'from')
+    locale: Language locale (default 'en')
+    user_data: Optional additional parameters
+
+Returns:
+    WalletResponseDTO containing:
+    - widget_url: URL for the Transak widget
+    - transaction_type: 'buy' or 'sell'
+    Or error information if unsuccessful
 """
 
-payment_methods_description = """
-Fetches available payment methods for buying/selling cryptocurrencies.
-- Supports various fiat currencies and payment options
-- Integrates with third-party payment processors for secure transactions
-- Provides users with a list of available payment options based on their location
-"""
+ninth_description = """
+Process MoonPay transaction (buy/sell) and return widget URL
 
-currencies_description = """
-Fetches the list of supported cryptocurrencies for trading.
-- Provides detailed information about each cryptocurrency
-- Integrates with third-party exchanges for real-time data
-- Ensures users have access to the latest information about supported assets
-"""
+Args:
+    from_currency_or_crypto: Source currency/crypto code
+    to_currency_or_crypto: Target currency/crypto code
+    amount: Amount to exchange
+    wallet_address: User's wallet address
+    direction: 'from' or 'to' (default 'from')
+    locale: Language locale (default 'en')
+    user_data: Optional additional parameters
 
+Returns:
+    WalletResponseDTO containing:
+    - widget_url: URL for the MoonPay widget
+    - transaction_type: 'buy' or 'sell'
+    Or error information if unsuccessful
+"""
 
 

@@ -161,7 +161,7 @@ ENCRYPTION_KEY = config('ENCRYPTION_KEY')
 
 GOOGLE_PASSWORD = config("GOOGLE_PASSWORD", default=None)
 GOOGLE_Client_ID = config("GOOGLE_Client_ID", default=None)
-INFURA = config("INFURA")
+INFURA = config("INFURA", default=None)
 ETH_API_KEY = config("ETHAPIKEY", default=None)
 BNB_API_KEY = config("BNBAPIKEY", default=None)
 BLOCK_CYPHER = config("BLOCKCYPHER", default=None)
@@ -177,6 +177,9 @@ PAYBIS_API_KEY = config("PAYBISKEY", default=None)
 PAYBIS_SECRET_KEY = config("PAYBISSECRETKEY", default=None)
 KOTANIPAY_API_KEY = config("KOTANIPAYKEY", default=None)
 TRANSAK_API_KEY = config("TRANSAKKEY", default=None)
+TRANSAK_SANDBOX = True  # Set to False for production
+MOONPAY_API_KEY = config("MOONPAYKEY", default=None)
+MOONPAY_SANDBOX = True  # Set to False for production
 LIFI_API_KEY = config("LIFIKEY", default=None)
 
 NINJA_JWT = {
