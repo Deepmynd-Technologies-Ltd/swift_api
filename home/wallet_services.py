@@ -261,13 +261,13 @@ def get_swap_quote(
                 "status_code": result.get("status_code", HTTPStatusCode.BAD_REQUEST),
                 "data": result.get("data")
             }
-        
-        # Add provider metadata to successful response
-        if result.get("data"):
-            result["data"]["provider"] = "lifi"
-            result["data"]["quote_id"] = result["data"].get("id")
-        
-        return result
+        return {
+            "success": True,
+            "quote_id": result.get("quoteId"),
+            "message": "Swap quote retrieved successfully",
+            "status_code": HTTPStatusCode.OK,
+            "data": result.get("data")
+        }
         
     except Exception as ex:
         # Get the most detailed error message possible

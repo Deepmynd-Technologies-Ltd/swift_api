@@ -20,7 +20,7 @@ from home.wallet_services import (
     generate_secrete_phrases, import_from_phrases,
     get_wallet_balance, get_all_transactions_history,
     send_crypto_transaction, get_swap_quote, prepare_swap,
-    process_swap, get_swap_status,
+    process_swap, get_swap_status, get_swap_quote,
 )
 from home.buy_sell import (
         process_paybis_transaction, process_transak_transaction,
@@ -91,6 +91,52 @@ def get_provider_url_for_token(token_symbol: str) -> str:
     """
     token_symbol_upper = token_symbol.upper()
     return WEB3_PROVIDER_URLS.get(token_symbol_upper, WEB3_PROVIDER_URLS["ETH"])
+
+@wallet_system.post("swap/quote/", response=WalletResponseDTO[Dict],
+                    description="Get Swap Quote", 
+                    summary="Get Swap Quote")
+def get_swap_quote_endpoint(request, req: SwapQuoteRequest):
+    try:
+
+        # Fetch the swap quote
+        swap_quote = get_swap_quote(
+            from_symbol=req.from_symbol,
+            to_symbol=req.to_symbol,
+            from_address=req.from_address,
+            to_address=req.to_address,
+            from_token=req.from_token,
+            to_token=req.to_token,
+            amount=req.amount,
+            slippage=req.slippage or 0.5,
+            order="RECOMMENDED",
+        )
+        
+        # Build the response data structure
+        response_data = {
+            "data": swap_quote.get("data"),
+            "quote_data": swap_quote.get("quote_data"),
+            "message": swap_quote.get("message"),
+            "success": swap_quote.get("success", False),
+            "status_code": swap_quote.get("status_code", HTTPStatusCode.OK)
+        }
+
+        return wallet_system.api.create_response(
+            request,
+            WalletResponseDTO(**response_data),
+            status=response_data["status_code"]
+        )
+        
+    except Exception as ex:
+        error_message = f"Failed to get swap quote: {str(ex)}"
+        return wallet_system.api.create_response(
+            request,
+            WalletResponseDTO(
+                message=error_message,
+                success=False,
+                status_code=HTTPStatusCode.INTERNAL_SERVER_ERROR
+            ),
+            status=HTTPStatusCode.INTERNAL_SERVER_ERROR
+        )
 
 @wallet_system.post("swap/", response=WalletResponseDTO, description=sixth_description, summary="Process Token Swap")
 def process_swap_endpoint(request, req: SwapExecuteRequest):
