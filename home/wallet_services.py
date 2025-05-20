@@ -52,18 +52,13 @@ SYMBOL_MAP = {
 }
 
 SYMBOL_TO_CHAIN_ID = {
-    "eth": 1,              # Ethereum
-    "bnb": 56,             # Binance Smart Chain
-    "matic": 137,          # Polygon
-    "btc": 10001,          # Bitcoin (custom ID)
-    "doge": 10002,         # Dogecoin (custom ID)
-    "sol": 10003,          # Solana (custom ID)
-    "trx": 10004,          # Tron (custom ID)
-    "usdt": 20001,         # USDT (could be TRC20/USDT on Tron)
-    "usd": 20002,          # Fiat - USD
-    "ngn": 20003,          # Fiat - NGN
-    "eur": 20004,          # Fiat - EUR
-    "gbp": 20005,          # Fiat - GBP
+    "eth": 1,
+    "bnb": 56,
+    "matic": 137,
+    "btc": 10001,
+    "doge": 10002,
+    "sol": 10003,
+    "usdt": 20001,
 }
 
 
