@@ -58,7 +58,7 @@ SYMBOL_TO_CHAIN_ID = {
     "btc": 10001,
     "doge": 10002,
     "sol": 10003,
-    "usdt": 20001,
+    "usdt": 1,
 }
 
 
@@ -69,8 +69,8 @@ TOKEN_CONFIG = {
     Symbols.ETH: {"chain": "ethereum", "chain_id": 1, "native": True, "address": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"},
     Symbols.SOL: {"chain": "solana", "chain_id": 10003, "native": True, "address": "So11111111111111111111111111111111111111112"},
     Symbols.TRON: {"chain": "tron", "chain_id": 10004, "native": True, "address": "native"},
+    Symbols.USDT: {"chain": "ethereum", "chain_id": 1, "native": False, "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7"},
     Symbols.USDT: {
-        "ethereum": {"chain": "ethereum", "chain_id": 1, "native": False, "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7"},
         "bsc": {"chain": "bsc", "chain_id": 56, "native": False, "address": "0x55d398326f99059fF775485246999027B3197955"},
         "polygon": {"chain": "polygon", "chain_id": 137, "native": False, "address": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"}
     },
