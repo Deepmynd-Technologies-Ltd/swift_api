@@ -17,6 +17,7 @@ def get_btc_balance_and_history(address):
     return balance
 
 def get_eth_balance_and_history(address):
+    
     infura_url = 'https://mainnet.infura.io/v3/'+settings.INFURA
     # infura_url = 'HTTP://127.0.0.1:7545'
     web3 = Web3(Web3.HTTPProvider(infura_url))
@@ -73,6 +74,43 @@ def get_dodge_balance(address):
   data = response.json()
   balance = data.get("final_balance", 0) / 1e8  # Convert satoshis to BTC
   return balance
+
+def get_wdodge_balance(address):
+    """
+    Get WDODGE (Wrapped Dogecoin) balance for an address
+    WDODGE is an ERC-20 token on Ethereum (and potentially other EVM chains)
+    """
+    try:
+        # Initialize Web3
+        infura_url = 'https://mainnet.infura.io/v3/'+settings.INFURA
+        web3 = Web3(Web3.HTTPProvider(infura_url))
+        
+        # WDODGE contract address (mainnet example - verify actual address)
+        WDODGE_CONTRACT = Web3.to_checksum_address("0x7B4328c127B85369D9f82ca0503B000D09CF9180")
+        
+        # ERC-20 ABI (simplified for balance check)
+        ERC20_ABI = [
+            {
+                "constant": True,
+                "inputs": [{"name": "_owner", "type": "address"}],
+                "name": "balanceOf",
+                "outputs": [{"name": "balance", "type": "uint256"}],
+                "type": "function"
+            }
+        ]
+        
+        # Create contract instance
+        contract = web3.eth.contract(address=WDODGE_CONTRACT, abi=ERC20_ABI)
+        
+        # Get balance (in smallest units)
+        balance = contract.functions.balanceOf(Web3.to_checksum_address(address)).call()
+        
+        # Convert to standard units (WDODGE uses 8 decimals like DOGE)
+        return balance / 10**8
+        
+    except Exception as e:
+        print(f"Error fetching WDODGE balance: {e}")
+        return 0
 
 def get_tron_balance(address):
   client = Tron()

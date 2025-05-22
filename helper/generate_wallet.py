@@ -7,7 +7,7 @@ from bitcoinlib.keys import HDKey
 from mnemonic import Mnemonic
 from django.conf import settings
 from helper.coingeko_api import get_coins_value
-from helper.wallet_balance import get_bnb_balance_and_history, get_btc_balance_and_history, get_dodge_balance, get_eth_balance_and_history, get_sol_balance_and_history, get_tron_balance, get_usdt_balance
+from helper.wallet_balance import get_bnb_balance_and_history, get_btc_balance_and_history, get_dodge_balance, get_wdodge_balance, get_eth_balance_and_history, get_sol_balance_and_history, get_tron_balance, get_usdt_balance
 from home.wallet_schema import Symbols, WalletInfoResponse
 
 def generate_mnemonic():
@@ -90,12 +90,22 @@ def generate_wallets_from_seed(seed_phrase)-> List[WalletInfoResponse]:
     doge_wallet = Bip44.FromSeed(seed_bytes, Bip44Coins.DOGECOIN).DeriveDefaultPath()
     doge_balance = get_dodge_balance(doge_wallet.PublicKey().ToAddress())
 
-    price_doge =doge_balance * coinValue['dogecoin']['usd']
+    price_doge = doge_balance * coinValue['dogecoin']['usd']
     change_doge_hr = coinValue['dogecoin']['usd_24h_change']
     volume_doge = coinValue['dogecoin']['usd']
 
-    doge_info =  WalletInfoResponse(name="Doge coin", icon_url=f'{base_url}/doge_icon.svg', idName='dogecoin', symbols= Symbols.DODGE, volume=volume_doge, address=doge_wallet.PublicKey().ToAddress(),private_key=doge_wallet.PrivateKey().Raw().ToHex(),balance=round(doge_balance, 6), price=price_doge, changes=round(change_doge_hr, 3))
+    doge_info = WalletInfoResponse(name="Dogecoin (NATIVE)", icon_url=f'{base_url}/doge_icon.svg', idName='dogecoin', symbols=Symbols.DODGE, volume=volume_doge, address=doge_wallet.PublicKey().ToAddress(), private_key=doge_wallet.PrivateKey().Raw().ToHex(), balance=round(doge_balance, 6), price=price_doge, changes=round(change_doge_hr, 3))
     wallets.append(doge_info)
+
+    # WDoge Wallets
+    wdoge_balance = get_wdodge_balance(eth_wallet.PublicKey().ToAddress())
+    
+    price_wdoge = wdoge_balance * coinValue['dogecoin']['usd']  # Using same price as native DOGE
+    change_wdoge_hr = coinValue['dogecoin']['usd_24h_change']
+    volume_wdoge = coinValue['dogecoin']['usd']
+
+    wdoge_info = WalletInfoResponse(name="Wrapped Dogecoin", icon_url=f'{base_url}/doge_icon.svg', idName='wrapped dogecoin', symbols=Symbols.DODGE, volume=volume_wdoge, address=eth_wallet.PublicKey().ToAddress(), private_key=eth_wallet.PrivateKey().Raw().ToHex(), balance=round(wdoge_balance, 6), price=price_wdoge, changes=round(change_wdoge_hr, 3))
+    wallets.append(wdoge_info)
 
     # BNB Wallets
     binance_wallet = Bip44.FromSeed(seed_bytes, Bip44Coins.BINANCE_SMART_CHAIN).DeriveDefaultPath()

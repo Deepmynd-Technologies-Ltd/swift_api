@@ -55,29 +55,20 @@ SYMBOL_TO_CHAIN_ID = {
     "eth": 1,
     "bnb": 56,
     "matic": 137,
-    "btc": 10001,
-    "doge": 10002,
-    "sol": 10003,
+    "btc": 20000000000001,
+    "dodge": 56,
+    "sol": 1151111081099710,
     "usdt": 1,
 }
 
 
 TOKEN_CONFIG = {
     Symbols.BNB: {"chain": "bsc", "chain_id": 56, "native": True, "address": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"},
-    Symbols.BTC: {"chain": "bitcoin", "chain_id": 10001, "native": True, "address": "native"},
-    Symbols.DODGE: {"chain": "dogechain", "chain_id": 10002, "native": True, "address": "native"},
+    Symbols.BTC: {"chain": "bitcoin", "chain_id": 20000000000001, "native": True, "address": "bitcoin"},
+    Symbols.DODGE: {"chain": "dogechain", "chain_id": 56, "native": True, "address": "0xbA2aE424d960c26247Dd6c32edC70B295c744C43"},
     Symbols.ETH: {"chain": "ethereum", "chain_id": 1, "native": True, "address": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"},
-    Symbols.SOL: {"chain": "solana", "chain_id": 10003, "native": True, "address": "So11111111111111111111111111111111111111112"},
-    Symbols.TRON: {"chain": "tron", "chain_id": 10004, "native": True, "address": "native"},
+    Symbols.SOL: {"chain": "solana", "chain_id": 1151111081099710, "native": True, "address": "So11111111111111111111111111111111111111112"},
     Symbols.USDT: {"chain": "ethereum", "chain_id": 1, "native": False, "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7"},
-    Symbols.USDT: {
-        "bsc": {"chain": "bsc", "chain_id": 56, "native": False, "address": "0x55d398326f99059fF775485246999027B3197955"},
-        "polygon": {"chain": "polygon", "chain_id": 137, "native": False, "address": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"}
-    },
-    FiatCurrency.USD: {"chain": "usd", "chain_id": "usd", "native": True, "address": "native"},
-    FiatCurrency.NGN: {"chain": "ngn", "chain_id": "ngn", "native": True, "address": "native"},
-    FiatCurrency.EUR: {"chain": "eur", "chain_id": "eur", "native": True, "address": "native"},
-    FiatCurrency.GBP: {"chain": "gbp", "chain_id": "gbp", "native": True, "address": "native"}
 }
 
 def convert_to_symbol(symbol: Union[Symbols, str]) -> Symbols:
@@ -351,7 +342,7 @@ def prepare_swap(
             from_chain_id = SYMBOL_TO_CHAIN_ID.get(from_symbol.lower()),
             to_chain_id = SYMBOL_TO_CHAIN_ID.get(to_symbol.lower()),
             from_token="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-            to_token="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            to_token="0xbA2aE424d960c26247Dd6c32edC70B295c744C43",
             amount=amount,
             from_address=from_address,
             to_address=to_address,
@@ -472,7 +463,7 @@ def process_swap(
             from_symbol=str(from_symbol),
             to_symbol=str(to_symbol),
             from_token="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-            to_token="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            to_token="0xbA2aE424d960c26247Dd6c32edC70B295c744C43",
             amount=amount,
             from_address=from_address,
             to_address=to_address,
