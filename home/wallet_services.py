@@ -65,7 +65,7 @@ SYMBOL_TO_CHAIN_ID = {
 TOKEN_CONFIG = {
     Symbols.BNB: {"chain": "bsc", "chain_id": 56, "native": True, "address": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"},
     Symbols.BTC: {"chain": "bitcoin", "chain_id": 20000000000001, "native": True, "address": "bitcoin"},
-    Symbols.DODGE: {"chain": "dogechain", "chain_id": 56, "native": True, "address": "0xbA2aE424d960c26247Dd6c32edC70B295c744C43"},
+    Symbols.DODGE: {"chain": "dogechain", "chain_id": 56, "native": False, "address": "0xbA2aE424d960c26247Dd6c32edC70B295c744C43"},
     Symbols.ETH: {"chain": "ethereum", "chain_id": 1, "native": True, "address": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"},
     Symbols.SOL: {"chain": "solana", "chain_id": 1151111081099710, "native": True, "address": "So11111111111111111111111111111111111111112"},
     Symbols.USDT: {"chain": "ethereum", "chain_id": 1, "native": False, "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7"},
@@ -184,8 +184,6 @@ def api_request_handler(url: str, method: str = "get", headers: Dict = None,
 def get_swap_quote(
     from_symbol: str,
     to_symbol: str,
-    from_token: str,
-    to_token: str,
     amount: Decimal,
     from_address: str,
     to_address: Optional[str] = None,
@@ -194,11 +192,26 @@ def get_swap_quote(
 ) -> Dict:
     """Get a quote for swapping tokens using LiFi."""
     try:
+        # Get token configurations
+        from_config = get_token_config(from_symbol)
+        to_config = get_token_config(to_symbol)
+        
+        if not from_config or not to_config:
+            return {
+                "success": False,
+                "message": "Invalid token symbols provided",
+                "status_code": HTTPStatusCode.BAD_REQUEST
+            }
+
+        # Get token addresses
+        from_token = from_config.get("address")
+        to_token = to_config.get("address")
+        
         try:
             if isinstance(amount, str):
                 amount = Decimal(amount)
-            # For native tokens (BNB/ETH), multiply by 10^18
-            if from_token.lower() == "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee":
+            # For native tokens, multiply by 10^18
+            if from_config.get("native", False):
                 amount_wei = int(amount * Decimal(10**18))
             else:
                 amount_wei = int(amount)
@@ -206,13 +219,13 @@ def get_swap_quote(
         except Exception as conv_ex:
             return {
                 "success": False,
-                "message": f"Invalid amount format: {str(conv_ex)}. Example valid amount: '1.5' for 1.5 BNB",
+                "message": f"Invalid amount format: {str(conv_ex)}. Example valid amount: '1.5' for 1.5 {from_symbol}",
                 "status_code": HTTPStatusCode.BAD_REQUEST
             }
         
         params = {
-            "fromChain": SYMBOL_TO_CHAIN_ID.get(from_symbol.lower()),
-            "toChain": SYMBOL_TO_CHAIN_ID.get(to_symbol.lower()),
+            "fromChain": from_config.get("chain_id"),
+            "toChain": to_config.get("chain_id"),
             "fromToken": from_token,
             "toToken": to_token,
             "fromAddress": from_address,
@@ -243,7 +256,7 @@ def get_swap_quote(
                 error_msg = result["data"].get("message", error_msg)
             return {
                 "success": False,
-                "message": f"LiFi API error1: {error_msg}",
+                "message": f"LiFi API error: {error_msg}",
                 "status_code": result.get("status_code", HTTPStatusCode.BAD_REQUEST),
                 "data": result.get("data")
             }
@@ -269,58 +282,6 @@ def get_swap_quote(
             "exception_type": ex.__class__.__name__ if hasattr(ex, '__class__') else None
         }
 
-def get_swap_status(tx_hash: str) -> Dict:
-    """Get the status of a swap transaction using LiFi API."""
-    try:
-        if not tx_hash:
-            return {
-                "success": False,
-                "message": "Transaction hash is required",
-                "status_code": HTTPStatusCode.BAD_REQUEST
-            }
-
-        headers = {
-            "Accept": "application/json",
-        }
-
-        # Add API key if configured
-        if hasattr(settings, 'LIFI_API_KEY') and settings.LIFI_API_KEY:
-            headers["x-lifi-api-key"] = settings.LIFI_API_KEY
-
-        params = {
-            "txHash": tx_hash
-        }
-
-        # Make the API request
-        result = api_request_handler(
-            "https://li.quest/v1/status",
-            method="get",
-            headers=headers,
-            params=params
-        )
-
-        if not result.get("success"):
-            return {
-                "success": False,
-                "message": result.get("message", "Failed to get transaction status"),
-                "status_code": result.get("status_code", HTTPStatusCode.BAD_REQUEST),
-                "data": result.get("data")
-            }
-
-        # Add provider info
-        if result.get("data"):
-            result["data"]["provider"] = "lifi"
-        
-        return result
-
-    except Exception as e:
-        return {
-            "success": False,
-            "message": f"Failed to get transaction status: {str(e)}",
-            "status_code": HTTPStatusCode.INTERNAL_SERVER_ERROR,
-            "exception_type": e.__class__.__name__
-        }
-
 def prepare_swap(
     from_symbol: Union[str, int],
     to_symbol: Union[str, int],
@@ -337,12 +298,21 @@ def prepare_swap(
     3. Return the transaction data ready for signing
     """
     try:
+        # Get token configurations
+        from_config = get_token_config(from_symbol)
+        to_config = get_token_config(to_symbol)
+        
+        if not from_config or not to_config:
+            return {
+                "success": False,
+                "message": "Invalid token symbols provided",
+                "status_code": HTTPStatusCode.BAD_REQUEST
+            }
+
         # Step 1: Get the swap quote
         quote_result = get_swap_quote(
-            from_chain_id = SYMBOL_TO_CHAIN_ID.get(from_symbol.lower()),
-            to_chain_id = SYMBOL_TO_CHAIN_ID.get(to_symbol.lower()),
-            from_token="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-            to_token="0xbA2aE424d960c26247Dd6c32edC70B295c744C43",
+            from_symbol=from_symbol,
+            to_symbol=to_symbol,
             amount=amount,
             from_address=from_address,
             to_address=to_address,
@@ -445,25 +415,28 @@ def process_swap(
     1. Get a swap quote
     2. Prepare the transaction data
     3. Optionally execute the transaction if requested
-    
-    Returns:
-        Dictionary containing:
-        - success: bool
-        - message: str
-        - status_code: int
-        - data: dict (main transaction data)
-        - quote_data: dict (detailed quote information)
     """
     # Initialize quote_data early to ensure it's always available
     quote_data = None
     
     try:
+        # Get token configurations
+        from_config = get_token_config(from_symbol)
+        to_config = get_token_config(to_symbol)
+        
+        if not from_config or not to_config:
+            return {
+                "success": False,
+                "message": "Invalid token symbols provided",
+                "status_code": HTTPStatusCode.BAD_REQUEST,
+                "data": None,
+                "quote_data": None
+            }
+
         # Step 1: Get the swap quote and prepare transaction
         prepare_result = get_swap_quote(
-            from_symbol=str(from_symbol),
-            to_symbol=str(to_symbol),
-            from_token="0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-            to_token="0xbA2aE424d960c26247Dd6c32edC70B295c744C43",
+            from_symbol=from_symbol,
+            to_symbol=to_symbol,
             amount=amount,
             from_address=from_address,
             to_address=to_address,
@@ -649,4 +622,56 @@ def process_swap(
             "status_code": HTTPStatusCode.INTERNAL_SERVER_ERROR,
             "data": None,
             "quote_data": quote_data
+        }
+
+def get_swap_status(tx_hash: str) -> Dict:
+    """Get the status of a swap transaction using LiFi API."""
+    try:
+        if not tx_hash:
+            return {
+                "success": False,
+                "message": "Transaction hash is required",
+                "status_code": HTTPStatusCode.BAD_REQUEST
+            }
+
+        headers = {
+            "Accept": "application/json",
+        }
+
+        # Add API key if configured
+        if hasattr(settings, 'LIFI_API_KEY') and settings.LIFI_API_KEY:
+            headers["x-lifi-api-key"] = settings.LIFI_API_KEY
+
+        params = {
+            "txHash": tx_hash
+        }
+
+        # Make the API request
+        result = api_request_handler(
+            "https://li.quest/v1/status",
+            method="get",
+            headers=headers,
+            params=params
+        )
+
+        if not result.get("success"):
+            return {
+                "success": False,
+                "message": result.get("message", "Failed to get transaction status"),
+                "status_code": result.get("status_code", HTTPStatusCode.BAD_REQUEST),
+                "data": result.get("data")
+            }
+
+        # Add provider info
+        if result.get("data"):
+            result["data"]["provider"] = "lifi"
+        
+        return result
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Failed to get transaction status: {str(e)}",
+            "status_code": HTTPStatusCode.INTERNAL_SERVER_ERROR,
+            "exception_type": e.__class__.__name__
         }
