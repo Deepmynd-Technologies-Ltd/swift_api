@@ -104,8 +104,6 @@ def get_swap_quote_endpoint(request, req: SwapQuoteRequest):
             to_symbol=req.to_symbol,
             from_address=req.from_address,
             to_address=req.to_address,
-            from_token=req.from_token,
-            to_token=req.to_token,
             amount=req.amount,
             slippage=req.slippage or 0.5,
             order="RECOMMENDED",

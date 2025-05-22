@@ -56,19 +56,55 @@ SYMBOL_TO_CHAIN_ID = {
     "bnb": 56,
     "matic": 137,
     "btc": 20000000000001,
-    "dodge": 56,
+    "dodge": 1,
     "sol": 1151111081099710,
     "usdt": 1,
 }
 
 
 TOKEN_CONFIG = {
-    Symbols.BNB: {"chain": "bsc", "chain_id": 56, "native": True, "address": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"},
-    Symbols.BTC: {"chain": "bitcoin", "chain_id": 20000000000001, "native": True, "address": "bitcoin"},
-    Symbols.DODGE: {"chain": "dogechain", "chain_id": 56, "native": False, "address": "0xbA2aE424d960c26247Dd6c32edC70B295c744C43"},
-    Symbols.ETH: {"chain": "ethereum", "chain_id": 1, "native": True, "address": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"},
-    Symbols.SOL: {"chain": "solana", "chain_id": 1151111081099710, "native": True, "address": "So11111111111111111111111111111111111111112"},
-    Symbols.USDT: {"chain": "ethereum", "chain_id": 1, "native": False, "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7"},
+    Symbols.BNB: {
+        "chain": "bsc", 
+        "chain_id": 56, 
+        "native": True, 
+        "address": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+        "decimals": 18
+    },
+    Symbols.BTC: {
+        "chain": "bitcoin", 
+        "chain_id": 20000000000001, 
+        "native": True, 
+        "address": "bitcoin",
+        "decimals": 8
+    },
+    Symbols.DODGE: {
+        "chain": "dogechain", 
+        "chain_id": 1, 
+        "native": True, 
+        "address": "0xbA2aE424d960c26247Dd6c32edC70B295c744C43",
+        "decimals": 8
+    },
+    Symbols.ETH: {
+        "chain": "ethereum", 
+        "chain_id": 1, 
+        "native": True, 
+        "address": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+        "decimals": 18
+    },
+    Symbols.SOL: {
+        "chain": "solana", 
+        "chain_id": 1151111081099710, 
+        "native": True, 
+        "address": "So11111111111111111111111111111111111111112",
+        "decimals": 9
+    },
+    Symbols.USDT: {
+        "chain": "ethereum", 
+        "chain_id": 1, 
+        "native": False, 
+        "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+        "decimals": 6
+    },
 }
 
 def convert_to_symbol(symbol: Union[Symbols, str]) -> Symbols:
@@ -181,6 +217,32 @@ def api_request_handler(url: str, method: str = "get", headers: Dict = None,
     except Exception as ex:
         return {"success": False, "message": f"Exception: {str(ex)}", "status_code": 500}
 
+def validate_token_amount(amount: Union[str, float, Decimal], symbol: str) -> Dict:
+    """Validate that an amount is properly formatted for the token's decimals."""
+    try:
+        config = get_token_config(symbol)
+        if not config:
+            return {"valid": False, "message": f"Invalid token symbol: {symbol}"}
+            
+        decimals = config.get("decimals", 18)
+        max_value = Decimal(10**decimals) - 1
+        
+        if isinstance(amount, str):
+            amount = Decimal(amount)
+        elif isinstance(amount, float):
+            amount = Decimal(str(amount))
+            
+        if amount <= 0:
+            return {"valid": False, "message": "Amount must be positive"}
+            
+        if amount > max_value:
+            return {"valid": False, "message": f"Amount exceeds maximum value for {symbol}"}
+            
+        return {"valid": True, "decimals": decimals, "amount_wei": int(amount * Decimal(10**decimals))}
+        
+    except Exception as e:
+        return {"valid": False, "message": f"Validation error: {str(e)}"}
+
 def get_swap_quote(
     from_symbol: str,
     to_symbol: str,
@@ -210,11 +272,12 @@ def get_swap_quote(
         try:
             if isinstance(amount, str):
                 amount = Decimal(amount)
-            # For native tokens, multiply by 10^18
-            if from_config.get("native", False):
-                amount_wei = int(amount * Decimal(10**18))
-            else:
-                amount_wei = int(amount)
+            
+            # Get the correct decimal places
+            decimals = from_config.get("decimals", 18)  # Default to 18 if not specified
+            
+            # Convert amount to smallest units (wei/satoshi/etc.)
+            amount_wei = int(amount * Decimal(10**decimals))
                 
         except Exception as conv_ex:
             return {
@@ -410,14 +473,16 @@ def process_swap(
     web3_provider_url: Optional[str] = None,
     gas_multiplier: float = 1.1
 ) -> Dict:
-    """
-    Unified function to handle the entire swap process:
-    1. Get a swap quote
-    2. Prepare the transaction data
-    3. Optionally execute the transaction if requested
-    """
-    # Initialize quote_data early to ensure it's always available
+    """Unified function to handle the entire swap process."""
     quote_data = None
+    amount_validation = validate_token_amount(amount, from_symbol)
+    
+    if not amount_validation.get("valid"):
+        return {
+            "success": False,
+            "message": amount_validation.get("message"),
+            "status_code": HTTPStatusCode.BAD_REQUEST
+        }
     
     try:
         # Get token configurations
