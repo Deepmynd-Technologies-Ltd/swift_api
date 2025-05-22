@@ -104,7 +104,7 @@ def generate_wallets_from_seed(seed_phrase)-> List[WalletInfoResponse]:
     change_wdoge_hr = coinValue['dogecoin']['usd_24h_change']
     volume_wdoge = coinValue['dogecoin']['usd']
 
-    wdoge_info = WalletInfoResponse(name="Wrapped Dogecoin", icon_url=f'{base_url}/doge_icon.svg', idName='wrapped dogecoin', symbols=Symbols.DODGE, volume=volume_wdoge, address=eth_wallet.PublicKey().ToAddress(), private_key=eth_wallet.PrivateKey().Raw().ToHex(), balance=round(wdoge_balance, 6), price=price_wdoge, changes=round(change_wdoge_hr, 3))
+    wdoge_info = WalletInfoResponse(name="Wrapped Dogecoin", icon_url=f'{base_url}/doge_icon.svg', idName='wrapped dogecoin', symbols=Symbols.WDODGE, volume=volume_wdoge, address=eth_wallet.PublicKey().ToAddress(), private_key=eth_wallet.PrivateKey().Raw().ToHex(), balance=round(wdoge_balance, 6), price=price_wdoge, changes=round(change_wdoge_hr, 3))
     wallets.append(wdoge_info)
 
     # BNB Wallets

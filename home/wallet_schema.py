@@ -28,6 +28,7 @@ class Symbols(str, Enum):
   SOL = "sol"
   TRON = "trx"
   DODGE = "doge"
+  WDODGE = "wdoge"
   BNB = "bnb"
   USDT = "usdt"
   USD = "usd" 
