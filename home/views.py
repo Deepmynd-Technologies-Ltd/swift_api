@@ -41,7 +41,7 @@ WEB3_PROVIDER_URLS = {
     "USDC": f"https://mainnet.infura.io/v3/{settings.INFURA}",
     "DAI": f"https://mainnet.infura.io/v3/{settings.INFURA}",
     "SOL": "https://api.mainnet-beta.solana.com",
-    "DOGE": "https://dogechain.ankr.com",
+    "DODGE": "https://bsc-dataseed.binance.org/",
     "AVAX": "https://api.avax.network/ext/bc/C/rpc",
     "FTM": "https://rpc.ftm.tools",
     "ARB": "https://arb1.arbitrum.io/rpc",

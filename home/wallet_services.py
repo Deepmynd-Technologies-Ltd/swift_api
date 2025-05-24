@@ -79,7 +79,7 @@ TOKEN_CONFIG = {
     },
     Symbols.DODGE: {
         "chain": "dogechain", 
-        "chain_id": 1, 
+        "chain_id": 56, 
         "native": True, 
         "address": "0xbA2aE424d960c26247Dd6c32edC70B295c744C43",
         "decimals": 8
@@ -473,7 +473,7 @@ def process_swap(
     web3_provider_url: Optional[str] = None,
     gas_multiplier: float = 1.1
 ) -> Dict:
-    """Unified function to handle the entire swap process."""
+    """Unified function to handle swap process for both EVM chains and Solana."""
     quote_data = None
     amount_validation = validate_token_amount(amount, from_symbol)
     
@@ -497,6 +497,12 @@ def process_swap(
                 "data": None,
                 "quote_data": None
             }
+
+        # Determine if this involves Solana
+        is_solana_transaction = (
+            from_config.get("chain") == "solana" or 
+            to_config.get("chain") == "solana"
+        )
 
         # Step 1: Get the swap quote and prepare transaction
         prepare_result = get_swap_quote(
@@ -573,7 +579,8 @@ def process_swap(
             "tool": quote_data.get("tool"),
             "integrator": quote_data.get("integrator", "lifi-api"),
             "includedSteps": quote_data.get("includedSteps", []),
-            "transactionRequest": transaction_data.get("transactionRequest", {})
+            "transactionRequest": transaction_data.get("transactionRequest", {}),
+            "chain_type": "solana" if is_solana_transaction else "evm"
         }
 
         # Return early if we're only preparing
@@ -587,10 +594,10 @@ def process_swap(
             }
             
         # Step 2: Execute the transaction if requested
-        if not private_key or not web3_provider_url:
+        if not private_key:
             return {
                 "success": False,
-                "message": "Private key and Web3 provider URL are required for execution",
+                "message": "Private key is required for execution",
                 "status_code": HTTPStatusCode.BAD_REQUEST,
                 "data": result,
                 "quote_data": quote_data
@@ -601,6 +608,108 @@ def process_swap(
             return {
                 "success": False,
                 "message": "Transaction request data is missing",
+                "status_code": HTTPStatusCode.BAD_REQUEST,
+                "data": result,
+                "quote_data": quote_data
+            }
+
+        # Handle execution based on chain type
+        if is_solana_transaction:
+            return _execute_solana_transaction(
+                transaction_request, private_key, result, quote_data
+            )
+        else:
+            return _execute_evm_transaction(
+                transaction_request, private_key, web3_provider_url, 
+                gas_multiplier, result, quote_data
+            )
+
+    except Exception as ex:
+        error_msg = str(ex) or "Unknown error occurred during swap process"
+        return {
+            "success": False,
+            "message": f"Failed to process swap: {error_msg}",
+            "status_code": HTTPStatusCode.INTERNAL_SERVER_ERROR,
+            "data": None,
+            "quote_data": quote_data
+        }
+
+
+def _execute_solana_transaction(
+    transaction_request: Dict, 
+    private_key: str, 
+    result: Dict, 
+    quote_data: Dict
+) -> Dict:
+    """Execute Solana transaction using the existing send_sol function."""
+    try:
+        # Import with correct path (adjust based on your actual file structure)
+        from helper.send_transaction.send_sol import send_sol
+        from home.wallet_schema import SendTransactionDTO
+        
+        solana_tx_data = transaction_request
+
+        send_dto = SendTransactionDTO(
+            private_key=private_key,
+            to_address=solana_tx_data.get("to", ""),
+            from_address=solana_tx_data.get("from", ""),
+            amount=str(solana_tx_data.get("value", "0")),
+        )
+        
+        sol_result = send_sol(send_dto)
+        
+        # Check if transaction was successful
+        if sol_result.get("success", False):
+            return {
+                "success": True,
+                "message": "Solana swap transaction executed successfully",
+                "status_code": HTTPStatusCode.OK,
+                "data": {
+                    "preparation": result,
+                    "execution": {
+                        "transactionHash": sol_result.get("data", "N/A"),
+                        "fromAddress": send_dto.from_address,  # Use from_address instead of private_key
+                        "toAddress": send_dto.to_address,
+                        "amount": send_dto.amount,
+                        "chain": "solana"
+                    }
+                },
+                "quote_data": quote_data
+            }
+        else:
+            error_msg = sol_result.get("message", "Solana transaction failed")
+            return {
+                "success": False,
+                "message": f"Solana transaction failed: {error_msg}",
+                "status_code": HTTPStatusCode.INTERNAL_SERVER_ERROR,
+                "data": result,
+                "quote_data": quote_data
+            }
+            
+    except Exception as ex:
+        return {
+            "success": False,
+            "message": f"Solana transaction execution failed: {str(ex)}",
+            "status_code": HTTPStatusCode.INTERNAL_SERVER_ERROR,
+            "data": result,
+            "quote_data": quote_data
+        }
+
+
+def _execute_evm_transaction(
+    transaction_request: Dict, 
+    private_key: str, 
+    web3_provider_url: str, 
+    gas_multiplier: float, 
+    result: Dict, 
+    quote_data: Dict
+) -> Dict:
+    """Execute EVM transaction using Web3."""
+    try:
+        if not web3_provider_url:
+            return {
+                "success": False,
+                "message": "Web3 provider URL is required for EVM transactions",
                 "status_code": HTTPStatusCode.BAD_REQUEST,
                 "data": result,
                 "quote_data": quote_data
@@ -616,6 +725,7 @@ def process_swap(
                 "data": result,
                 "quote_data": quote_data
             }
+        print(web3_provider_url)
 
         # Get the account from private key
         account = w3.eth.account.from_key(private_key)
@@ -661,7 +771,7 @@ def process_swap(
         # Return successful execution result
         return {
             "success": True,
-            "message": "Swap transaction executed successfully",
+            "message": "EVM swap transaction executed successfully",
             "status_code": HTTPStatusCode.OK,
             "data": {
                 "preparation": result,
@@ -673,19 +783,19 @@ def process_swap(
                     "value": str(tx_params['value']),
                     "gasPrice": str(tx_params['gasPrice']),
                     "gasLimit": str(tx_params['gas']),
-                    "nonce": tx_params['nonce']
+                    "nonce": tx_params['nonce'],
+                    "chain": "evm"
                 }
             },
             "quote_data": quote_data
         }
-
+        
     except Exception as ex:
-        error_msg = str(ex) or "Unknown error occurred during swap process"
         return {
             "success": False,
-            "message": f"Failed to process swap: {error_msg}",
+            "message": f"EVM transaction execution failed: {str(ex)}",
             "status_code": HTTPStatusCode.INTERNAL_SERVER_ERROR,
-            "data": None,
+            "data": result,
             "quote_data": quote_data
         }
 
