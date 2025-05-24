@@ -12,9 +12,13 @@ from home.wallet_schema import (
 )
 from helper.generate_wallet import generate_mnemonic, generate_wallets_from_seed
 import json
-from helper.send_transaction import (
-    send_bnb, send_btc, send_eth, send_sol, send_usdt, send_tron
-)
+from helper.send_transaction.send_sol import send_sol
+from helper.send_transaction.send_bnb import send_bnb
+from helper.send_transaction.send_btc import send_btc
+from helper.send_transaction.send_eth import send_eth
+from helper.send_transaction.send_usdt import send_usdt_bep20
+from helper.send_transaction.send_tron import send_trx
+
 from helper.wallet_balance import (
     get_bnb_balance_and_history, get_btc_balance_and_history,
     get_dodge_balance, get_eth_balance_and_history,
@@ -641,25 +645,204 @@ def _execute_solana_transaction(
     result: Dict, 
     quote_data: Dict
 ) -> Dict:
-    """Execute Solana transaction using the existing send_sol function."""
+    """Execute Solana transaction using HTTP requests to Solana RPC."""
     try:
-        # Import with correct path (adjust based on your actual file structure)
-        from helper.send_transaction.send_sol import send_sol
-        from home.wallet_schema import SendTransactionDTO
+        import requests
+        import json
+        import base64
+        import base58
+        from nacl.signing import SigningKey
+        from nacl.encoding import Base64Encoder
         
-        solana_tx_data = transaction_request
+        # Solana RPC endpoint
+        rpc_url = "https://api.mainnet-beta.solana.com"
+        
+        # Validate RPC connection
+        try:
+            health_response = requests.post(
+                rpc_url,
+                json={"id": 1, "jsonrpc": "2.0", "method": "getHealth"},
+                timeout=10
+            )
+            if health_response.status_code != 200:
+                raise Exception("RPC not accessible")
+        except Exception as health_error:
+            return {
+                "success": False,
+                "message": f"Failed to connect to Solana RPC: {str(health_error)}",
+                "status_code": HTTPStatusCode.INTERNAL_SERVER_ERROR,
+                "data": result,
+                "quote_data": quote_data
+            }
 
-        send_dto = SendTransactionDTO(
-            private_key=private_key,
-            to_address=solana_tx_data.get("to", ""),
-            from_address=solana_tx_data.get("from", ""),
-            amount=str(solana_tx_data.get("value", "0")),
-        )
-        
-        sol_result = send_sol(send_dto)
-        
-        # Check if transaction was successful
-        if sol_result.get("success", False):
+        # Parse private key
+        try:
+            print(f"Private key length: {len(private_key)}")
+            print("Private key content", private_key)
+            
+            if private_key.startswith('[') and private_key.endswith(']'):
+                # Array format
+                key_bytes = bytes(eval(private_key))
+            elif len(private_key) == 64:
+                # Hex format (32 bytes = 64 hex characters)
+                key_bytes = bytes.fromhex(private_key)
+            elif len(private_key) == 128:
+                # Longer hex format (64 bytes = 128 hex characters, need first 32)
+                key_bytes = bytes.fromhex(private_key)[:32]
+            else:
+                # Base58 format
+                try:
+                    key_bytes = base58.b58decode(private_key)
+                except Exception:
+                    # If base58 decode fails, try hex decode as fallback
+                    key_bytes = bytes.fromhex(private_key)
+            
+            # Ensure we have exactly 32 bytes for the private key
+            if len(key_bytes) > 32:
+                key_bytes = key_bytes[:32]
+            elif len(key_bytes) < 32:
+                raise Exception(f"Private key too short: {len(key_bytes)} bytes, need 32 bytes")
+            
+            # Create signing key
+            signing_key = SigningKey(key_bytes)
+            
+        except Exception as key_error:
+            return {
+                "success": False,
+                "message": f"Invalid private key format: {str(key_error)}",
+                "status_code": HTTPStatusCode.BAD_REQUEST,
+                "data": result,
+                "quote_data": quote_data
+            }
+
+        # Extract and process transaction data
+        try:
+            # LiFi should provide a serialized transaction
+            serialized_tx = None
+            
+            if 'data' in transaction_request:
+                serialized_tx = transaction_request['data']
+            elif 'transaction' in transaction_request:
+                serialized_tx = transaction_request['transaction']
+            else:
+                return {
+                    "success": False,
+                    "message": "No serialized transaction data found in LiFi response",
+                    "status_code": HTTPStatusCode.BAD_REQUEST,
+                    "data": result,
+                    "quote_data": quote_data
+                }
+            
+            if not serialized_tx:
+                return {
+                    "success": False,
+                    "message": "Empty transaction data from LiFi",
+                    "status_code": HTTPStatusCode.BAD_REQUEST,
+                    "data": result,
+                    "quote_data": quote_data
+                }
+                
+        except Exception as parse_error:
+            return {
+                "success": False,
+                "message": f"Failed to parse transaction data: {str(parse_error)}",
+                "status_code": HTTPStatusCode.BAD_REQUEST,
+                "data": result,
+                "quote_data": quote_data
+            }
+
+        # Send the pre-signed transaction from LiFi
+        try:
+            # If LiFi provides a pre-signed transaction, send it directly
+            send_request = {
+                "id": 1,
+                "jsonrpc": "2.0",
+                "method": "sendTransaction",
+                "params": [
+                    serialized_tx,
+                    {
+                        "skipPreflight": False,
+                        "preflightCommitment": "processed",
+                        "encoding": "base64",
+                        "maxRetries": 3
+                    }
+                ]
+            }
+            
+            response = requests.post(
+                rpc_url,
+                json=send_request,
+                timeout=30,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code != 200:
+                return {
+                    "success": False,
+                    "message": f"RPC request failed with status {response.status_code}",
+                    "status_code": HTTPStatusCode.INTERNAL_SERVER_ERROR,
+                    "data": result,
+                    "quote_data": quote_data
+                }
+            
+            response_data = response.json()
+            
+            if 'error' in response_data:
+                error_message = response_data['error'].get('message', 'Unknown RPC error')
+                return {
+                    "success": False,
+                    "message": f"Solana RPC error: {error_message}",
+                    "status_code": HTTPStatusCode.INTERNAL_SERVER_ERROR,
+                    "data": result,
+                    "quote_data": quote_data,
+                    "rpc_error": response_data['error']
+                }
+            
+            tx_signature = response_data.get('result')
+            if not tx_signature:
+                return {
+                    "success": False,
+                    "message": "No transaction signature returned",
+                    "status_code": HTTPStatusCode.INTERNAL_SERVER_ERROR,
+                    "data": result,
+                    "quote_data": quote_data
+                }
+            
+            # Optional: Check transaction status
+            try:
+                # Wait a moment for the transaction to be processed
+                import time
+                time.sleep(2)
+                
+                status_request = {
+                    "id": 1,
+                    "jsonrpc": "2.0",
+                    "method": "getSignatureStatuses",
+                    "params": [
+                        [tx_signature],
+                        {"searchTransactionHistory": True}
+                    ]
+                }
+                
+                status_response = requests.post(rpc_url, json=status_request, timeout=10)
+                status_data = status_response.json()
+                
+                if 'result' in status_data and status_data['result']['value']:
+                    status_info = status_data['result']['value'][0]
+                    if status_info and status_info.get('err'):
+                        return {
+                            "success": False,
+                            "message": f"Transaction failed on-chain: {status_info['err']}",
+                            "status_code": HTTPStatusCode.INTERNAL_SERVER_ERROR,
+                            "data": result,
+                            "quote_data": quote_data,
+                            "transaction_signature": tx_signature
+                        }
+                        
+            except Exception as status_error:
+                # Status check failed but transaction was sent
+                pass
+            
             return {
                 "success": True,
                 "message": "Solana swap transaction executed successfully",
@@ -667,20 +850,20 @@ def _execute_solana_transaction(
                 "data": {
                     "preparation": result,
                     "execution": {
-                        "transactionHash": sol_result.get("data", "N/A"),
-                        "fromAddress": send_dto.from_address,  # Use from_address instead of private_key
-                        "toAddress": send_dto.to_address,
-                        "amount": send_dto.amount,
-                        "chain": "solana"
+                        "transactionHash": tx_signature,
+                        "transactionSignature": tx_signature,
+                        "fromAddress": base58.b58encode(signing_key.verify_key.encode()).decode('utf-8'),
+                        "chain": "solana",
+                        "status": "sent"
                     }
                 },
                 "quote_data": quote_data
             }
-        else:
-            error_msg = sol_result.get("message", "Solana transaction failed")
+            
+        except Exception as send_error:
             return {
                 "success": False,
-                "message": f"Solana transaction failed: {error_msg}",
+                "message": f"Failed to send Solana transaction: {str(send_error)}",
                 "status_code": HTTPStatusCode.INTERNAL_SERVER_ERROR,
                 "data": result,
                 "quote_data": quote_data
@@ -725,7 +908,6 @@ def _execute_evm_transaction(
                 "data": result,
                 "quote_data": quote_data
             }
-        print(web3_provider_url)
 
         # Get the account from private key
         account = w3.eth.account.from_key(private_key)

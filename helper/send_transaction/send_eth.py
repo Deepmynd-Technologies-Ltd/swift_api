@@ -37,4 +37,4 @@ def send_eth(req:SendTransactionDTO):
         tr = web3.eth.get_transaction_receipt(tx_hash)
         return tr, transaction_params["gasPrice"]
     except Exception as ex:
-        raise ex
+        raise RuntimeError(f"ETH transfer failed: {ex}")

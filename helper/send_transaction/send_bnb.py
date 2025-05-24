@@ -33,4 +33,4 @@ def send_bnb(req:SendTransactionDTO):
     tr = web3.eth.get_transaction_receipt(tx_hash)
     return tr, trx["gasPrice"]
   except Exception as ex:
-    raise ex
+    raise RuntimeError(f"BNB transfer failed: {ex}")
