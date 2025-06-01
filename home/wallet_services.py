@@ -111,6 +111,68 @@ TOKEN_CONFIG = {
     },
 }
 
+# Monetization configuration for swaps
+SWAP_MONETIZATION = {
+    'fee_percent': Decimal('0.005'),  # 0.5% fee
+    'min_fee_usd': Decimal('1.00'),  # $1 minimum fee
+    'fee_recipient': settings.SWAP_FEE_RECIPIENT if hasattr(settings, 'SWAP_FEE_RECIPIENT') else '0x4e94F8Dfc57dF2f1433e3679f6Bcb427aF73f1ce',
+    'integrator': 'your_company_id',
+    'fee_tiers': {
+        'high_volume': {'threshold': Decimal('10000'), 'fee': Decimal('0.003')},
+        'medium_volume': {'threshold': Decimal('1000'), 'fee': Decimal('0.004')},
+        'default': {'fee': Decimal('0.005')}
+    }
+}
+
+def calculate_swap_fee(amount: Decimal, from_symbol: str, to_symbol: str) -> Dict:
+    """Calculate swap fees based on monetization strategy."""
+    try:
+        # Ensure amount is Decimal
+        if not isinstance(amount, Decimal):
+            amount = Decimal(str(amount))
+        
+        # Get current price for fee calculation in USD
+        usd_price = get_token_usd_price(from_symbol)
+        amount_usd = amount * usd_price
+        
+        # Determine fee tier
+        fee_tier = SWAP_MONETIZATION['fee_tiers']['default']
+        for tier_name, tier in SWAP_MONETIZATION['fee_tiers'].items():
+            if tier_name != 'default' and amount_usd >= Decimal(str(tier['threshold'])):
+                fee_tier = tier
+                break
+        
+        fee_percent = Decimal(str(fee_tier['fee']))
+        fee_amount = amount * fee_percent
+        
+        # Convert to minimum fee in token terms
+        min_fee_token = Decimal(str(SWAP_MONETIZATION['min_fee_usd'])) / usd_price
+        final_fee = max(fee_amount, min_fee_token)
+        
+        return {
+            'gross_amount': amount,
+            'net_amount': amount - final_fee,
+            'fee_amount': final_fee,
+            'fee_percent': fee_percent,
+            'fee_currency': from_symbol,
+            'fee_recipient': SWAP_MONETIZATION['fee_recipient']
+        }
+    except Exception as e:
+        raise ValueError(f"Failed to calculate swap fee: {str(e)}")
+
+def get_token_usd_price(symbol: str) -> Decimal:
+    """Get current token price in USD (simplified - implement actual price feed)"""
+    # In a real implementation, you'd query a price oracle or API
+    prices = {
+        'BTC': Decimal('40000'),
+        'ETH': Decimal('3000'),
+        'BNB': Decimal('400'),
+        'SOL': Decimal('100'),
+        'USDT': Decimal('1'),
+        'DODGE': Decimal('0.1')
+    }
+    return prices.get(symbol.upper(), Decimal('1'))
+
 def convert_to_symbol(symbol: Union[Symbols, str]) -> Symbols:
     """Convert a string symbol to Symbols enum."""
     if isinstance(symbol, Symbols):
@@ -209,48 +271,54 @@ def send_crypto_transaction(symbol: Union[Symbols, str], req: SendTransactionDTO
     }
     return handle_wallet_response(handlers.get(symbol))
 
-# Simplified Swap Functions
-def get_swap_quote(from_symbol: str, to_symbol: str, amount: Decimal, from_address: str, 
-                  to_address: Optional[str] = None, slippage: float = 0.5) -> Dict:
+def get_swap_quote(from_symbol: str, to_symbol: str, amount: Union[str, float, Decimal], 
+                  from_address: str, to_address: Optional[str] = None, slippage: float = 0.5) -> Dict:
     """Get a quote for swapping tokens using LiFi, with monetization applied."""
-    from_config = get_token_config(from_symbol)
-    to_config = get_token_config(to_symbol)
-    
-    if not from_config or not to_config:
-        return {"success": False, "message": "Invalid token symbols"}
-
-    # Convert amount to wei
-    decimals = from_config.get("decimals", 18)
-    amount_wei = int(Decimal(str(amount)) * Decimal(10**decimals))
-
-    # Monetization fee (e.g., 0.5%)
-    monetization_fee_percent = Decimal("0.5")
-
-    params = {
-        "fromChain": from_config.get("chain_id"),
-        "toChain": to_config.get("chain_id"),
-        "fromToken": from_config.get("address"),
-        "toToken": to_config.get("address"),
-        "fromAddress": from_address,
-        "fromAmount": str(amount_wei),
-        "slippage": slippage / 100,
-        "integrator": "company-id",
-        "fee": 0.5,  # 0.5% in basis points
-        "feeRecipient": "fee_recipient_wallet_address"
-    }
-
-
-    if to_address:
-        params["toAddress"] = to_address
-
-    headers = {"Accept": "application/json", "Content-Type": "application/json"}
-    if hasattr(settings, 'LIFI_API_KEY') and settings.LIFI_API_KEY:
-        headers["x-lifi-api-key"] = settings.LIFI_API_KEY
-
     try:
+        # Convert amount to Decimal if it's not already
+        if not isinstance(amount, Decimal):
+            amount = Decimal(str(amount))
+            
+        from_config = get_token_config(from_symbol)
+        to_config = get_token_config(to_symbol)
+        
+        if not from_config or not to_config:
+            return {"success": False, "message": "Invalid token symbols"}
+
+        # Calculate monetization fee
+        fee_details = calculate_swap_fee(amount, from_symbol, to_symbol)
+        effective_amount = fee_details['net_amount']
+
+        # Convert amount to wei
+        decimals = from_config.get("decimals", 18)
+        amount_wei = int(effective_amount * (Decimal(10) ** decimals))
+
+        params = {
+            "fromChain": from_config.get("chain_id"),
+            "toChain": to_config.get("chain_id"),
+            "fromToken": from_config.get("address"),
+            "toToken": to_config.get("address"),
+            "fromAddress": from_address,
+            "fromAmount": str(amount_wei),
+            "slippage": Decimal(str(slippage)) / Decimal(100),
+            "integrator": SWAP_MONETIZATION['integrator'],
+            "fee": float(fee_details['fee_percent'] * 100),  # Convert to basis points
+            "feeRecipient": SWAP_MONETIZATION['fee_recipient']
+        }
+
+        if to_address:
+            params["toAddress"] = to_address
+
+        headers = {"Accept": "application/json", "Content-Type": "application/json"}
+        if hasattr(settings, 'LIFI_API_KEY') and settings.LIFI_API_KEY:
+            headers["x-lifi-api-key"] = settings.LIFI_API_KEY
+
         response = requests.get("https://li.quest/v1/quote", headers=headers, params=params)
         if response.status_code == 200:
-            return {"success": True, "data": response.json()}
+            quote_data = response.json()
+            # Add fee details to the response
+            quote_data['fee_details'] = fee_details
+            return {"success": True, "data": quote_data}
         return {"success": False, "message": f"LiFi API error: {response.text}"}
     except Exception as ex:
         return {"success": False, "message": str(ex)}
