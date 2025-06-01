@@ -1,4 +1,5 @@
 from typing import Dict, Optional
+from typing import Dict, Optional
 import requests
 from decimal import Decimal
 from django.conf import settings
@@ -35,7 +36,9 @@ BUY_SELL_MONETIZATION = {
 }
 
 def calculate_buy_sell_fee(amount: Decimal, currency: str, transaction_type: str) -> Dict:
-    """Calculate fees for buy/sell transactions (additive model)."""
+    """Calculate fees for buy/sell transactions using additive fee model.
+    The amount parameter represents what the user wants to receive (for buys) or send (for sells).
+    Fees are calculated and added on top of this amount."""
     currency = currency.upper()
     config = BUY_SELL_MONETIZATION
     
@@ -51,8 +54,8 @@ def calculate_buy_sell_fee(amount: Decimal, currency: str, transaction_type: str
     final_fee = max(total_fee, min_fee)
     
     return {
-        'net_amount': amount,  # The amount the user wants to receive/send
-        'gross_amount': amount + final_fee,  # The total amount user will pay (including fees)
+        'amount': amount,  # The amount user wants to receive (buy) or send (sell)
+        'total_with_fees': amount + final_fee,  # Total amount user will pay/send (including fees)
         'fee_amount': final_fee,
         'fee_breakdown': {
             'base_fee': base_fee,
@@ -109,24 +112,27 @@ def _validate_transaction_direction(transaction_type: str, from_curr: str) -> Op
     return None
 
 def _process_monetization(amount: Decimal, currency: str, transaction_type: str) -> Dict:
-    """Apply monetization fees to transaction amount (additive model)."""
+    """Apply monetization fees to transaction amount using additive model.
+    Returns both the original amount and the total with fees."""
     fee_details = calculate_buy_sell_fee(amount, currency, transaction_type)
     return {
-        'total_amount': fee_details['gross_amount'],  # Amount user needs to pay (net + fees)
-        'net_amount': fee_details['net_amount'],  # Amount user wants to receive/send
+        'amount': fee_details['amount'],  # Original amount user specified
+        'total_with_fees': fee_details['total_with_fees'],  # Amount + fees
         'fee_details': fee_details
     }
 
 def process_paybis_transaction(
     from_currency_or_crypto: str,
     to_currency_or_crypto: str,
-    amount: Decimal,
+    amount: Decimal,  # Amount user wants to receive (buy) or send (sell)
     partner_user_id: str,
     email: str,
     direction: str = 'from',
     locale: str = 'en'
 ) -> Dict:
-    """Handle Paybis transactions with additive monetization."""
+    """Handle Paybis transactions with additive monetization.
+    The amount parameter represents what the user wants to receive (for buys) or send (for sells).
+    Fees are calculated and added on top of this amount."""
     from_curr, to_curr = from_currency_or_crypto.upper(), to_currency_or_crypto.upper()
     
     # Validations
@@ -144,20 +150,20 @@ def process_paybis_transaction(
         return error
     
     try:
-        # Apply monetization
+        # Apply monetization (amount is what user wants to receive/send)
         monetization = _process_monetization(
             amount, 
             from_curr if direction == 'from' else to_curr,
             trans_type['type']
         )
         
-        # Get quote - using net_amount for the transaction
+        # Get quote - specify the amount user wants to receive/send
         quote_payload = {
             'currencyCodeFrom': PROVIDER_CURRENCY_MAPS['PAYBIS'][from_curr],
             'currencyCodeTo': PROVIDER_CURRENCY_MAPS['PAYBIS'][to_curr],
-            'amount': str(monetization['net_amount']),  # Using net amount for the actual transaction
+            'amount': str(monetization['amount']),  # The amount without fees
             'directionChange': direction,
-            'isReceivedAmount': False
+            'isReceivedAmount': True  # We're specifying the receive amount
         }
         
         headers = {
@@ -220,8 +226,8 @@ def process_paybis_transaction(
             'request_id': request_data['requestId'],
             'quote_response': quote_data,
             'fee_details': monetization['fee_details'],
-            'total_amount': monetization['total_amount'],  # Total amount user needs to pay (amount + fees)
-            'net_amount': monetization['net_amount']  # Actual transaction amount
+            'user_pays': monetization['total_with_fees'],  # Amount + fees
+            'user_receives': monetization['amount']  # Original amount requested
         }
         
     except requests.exceptions.RequestException as e:
@@ -242,7 +248,9 @@ def process_transak_transaction(
     hide_menu: bool = False,
     is_auto_fill: bool = False
 ) -> Dict:
-    """Process Transak transaction with additive monetization."""
+    """Process Transak transaction with additive monetization.
+    The amount parameter represents what the user wants to receive (for buys) or send (for sells).
+    Fees are calculated and added on top of this amount."""
     from_curr, to_curr = from_currency_or_crypto.upper(), to_currency_or_crypto.upper()
     
     trans_type = _determine_transaction_type(to_curr)
@@ -259,7 +267,7 @@ def process_transak_transaction(
         }
     
     try:
-        # Apply monetization
+        # Apply monetization (amount is what user wants to receive/send)
         monetization = _process_monetization(
             amount,
             from_curr if direction == 'from' else to_curr,
@@ -284,10 +292,10 @@ def process_transak_transaction(
         if redirect_url:
             params['redirectURL'] = redirect_url
         
-        # For additive fees, we pass the net amount to the provider
+        # For additive fees, we pass the amount user wants to receive/send (without fees)
         amount_key = f"{'fiat' if trans_type['type'] == 'buy' else 'crypto'}Amount" if is_auto_fill else \
                    f"default{'Fiat' if trans_type['type'] == 'buy' else 'Crypto'}Amount"
-        params[amount_key] = str(monetization['net_amount'])
+        params[amount_key] = str(monetization['amount'])  # The amount without fees
         
         params.update({
             'fiatCurrency': from_curr if trans_type['type'] == 'buy' else to_curr,
@@ -305,8 +313,8 @@ def process_transak_transaction(
             'status_code': HTTPStatusCode.SUCCESS,
             'parameters_used': params,
             'fee_details': monetization['fee_details'],
-            'total_amount': monetization['total_amount'],  # Total amount user needs to pay (amount + fees)
-            'net_amount': monetization['net_amount']  # Actual transaction amount
+            'user_pays': monetization['total_with_fees'],  # Amount + fees
+            'user_receives': monetization['amount']  # Original amount requested
         }
         
     except Exception as e:
