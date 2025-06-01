@@ -35,7 +35,7 @@ BUY_SELL_MONETIZATION = {
 }
 
 def calculate_buy_sell_fee(amount: Decimal, currency: str, transaction_type: str) -> Dict:
-    """Calculate fees for buy/sell transactions."""
+    """Calculate fees for buy/sell transactions (additive model)."""
     currency = currency.upper()
     config = BUY_SELL_MONETIZATION
     
@@ -51,8 +51,8 @@ def calculate_buy_sell_fee(amount: Decimal, currency: str, transaction_type: str
     final_fee = max(total_fee, min_fee)
     
     return {
-        'gross_amount': amount,
-        'net_amount': amount - final_fee,
+        'net_amount': amount,  # The amount the user wants to receive/send
+        'gross_amount': amount + final_fee,  # The total amount user will pay (including fees)
         'fee_amount': final_fee,
         'fee_breakdown': {
             'base_fee': base_fee,
@@ -109,10 +109,11 @@ def _validate_transaction_direction(transaction_type: str, from_curr: str) -> Op
     return None
 
 def _process_monetization(amount: Decimal, currency: str, transaction_type: str) -> Dict:
-    """Apply monetization fees to transaction amount."""
+    """Apply monetization fees to transaction amount (additive model)."""
     fee_details = calculate_buy_sell_fee(amount, currency, transaction_type)
     return {
-        'effective_amount': fee_details['net_amount'],
+        'total_amount': fee_details['gross_amount'],  # Amount user needs to pay (net + fees)
+        'net_amount': fee_details['net_amount'],  # Amount user wants to receive/send
         'fee_details': fee_details
     }
 
@@ -125,7 +126,7 @@ def process_paybis_transaction(
     direction: str = 'from',
     locale: str = 'en'
 ) -> Dict:
-    """Handle Paybis transactions with monetization."""
+    """Handle Paybis transactions with additive monetization."""
     from_curr, to_curr = from_currency_or_crypto.upper(), to_currency_or_crypto.upper()
     
     # Validations
@@ -150,11 +151,11 @@ def process_paybis_transaction(
             trans_type['type']
         )
         
-        # Get quote
+        # Get quote - using net_amount for the transaction
         quote_payload = {
             'currencyCodeFrom': PROVIDER_CURRENCY_MAPS['PAYBIS'][from_curr],
             'currencyCodeTo': PROVIDER_CURRENCY_MAPS['PAYBIS'][to_curr],
-            'amount': str(monetization['effective_amount']),
+            'amount': str(monetization['net_amount']),  # Using net amount for the actual transaction
             'directionChange': direction,
             'isReceivedAmount': False
         }
@@ -218,7 +219,9 @@ def process_paybis_transaction(
             'status_code': HTTPStatusCode.SUCCESS,
             'request_id': request_data['requestId'],
             'quote_response': quote_data,
-            'fee_details': monetization['fee_details']
+            'fee_details': monetization['fee_details'],
+            'total_amount': monetization['total_amount'],  # Total amount user needs to pay (amount + fees)
+            'net_amount': monetization['net_amount']  # Actual transaction amount
         }
         
     except requests.exceptions.RequestException as e:
@@ -239,7 +242,7 @@ def process_transak_transaction(
     hide_menu: bool = False,
     is_auto_fill: bool = False
 ) -> Dict:
-    """Process Transak transaction with monetization."""
+    """Process Transak transaction with additive monetization."""
     from_curr, to_curr = from_currency_or_crypto.upper(), to_currency_or_crypto.upper()
     
     trans_type = _determine_transaction_type(to_curr)
@@ -281,9 +284,10 @@ def process_transak_transaction(
         if redirect_url:
             params['redirectURL'] = redirect_url
         
+        # For additive fees, we pass the net amount to the provider
         amount_key = f"{'fiat' if trans_type['type'] == 'buy' else 'crypto'}Amount" if is_auto_fill else \
                    f"default{'Fiat' if trans_type['type'] == 'buy' else 'Crypto'}Amount"
-        params[amount_key] = str(monetization['effective_amount'])
+        params[amount_key] = str(monetization['net_amount'])
         
         params.update({
             'fiatCurrency': from_curr if trans_type['type'] == 'buy' else to_curr,
@@ -300,7 +304,9 @@ def process_transak_transaction(
             'message': "Transak widget URL generated successfully",
             'status_code': HTTPStatusCode.SUCCESS,
             'parameters_used': params,
-            'fee_details': monetization['fee_details']
+            'fee_details': monetization['fee_details'],
+            'total_amount': monetization['total_amount'],  # Total amount user needs to pay (amount + fees)
+            'net_amount': monetization['net_amount']  # Actual transaction amount
         }
         
     except Exception as e:
@@ -315,7 +321,7 @@ def process_moonpay_transaction(
     locale: str = 'en',
     user_data: Optional[Dict] = None
 ) -> Dict:
-    """Process MoonPay transaction and return widget URL."""
+    """Process MoonPay transaction with additive monetization and return widget URL."""
     from_curr, to_curr = from_currency_or_crypto.upper(), to_currency_or_crypto.upper()
     
     trans_type = _determine_transaction_type(to_curr)
@@ -343,13 +349,14 @@ def process_moonpay_transaction(
             if trans_type['type'] == 'buy' else \
             ("https://sell-staging.moonpay.com" if settings.MOONPAY_SANDBOX else "https://sell.moonpay.com")
         
+        # For additive fees, we pass the net amount to the provider
         widget_url = (
             f"{base_url}/?apiKey={settings.MOONPAY_API_KEY}"
             f"&walletAddress={wallet_address}"
             f"&currencyCode={PROVIDER_CURRENCY_MAPS['MOONPAY'].get(to_curr if trans_type['type'] == 'buy' else from_curr, (to_curr if trans_type['type'] == 'buy' else from_curr).lower())}"
             f"&baseCurrencyCode={from_curr if trans_type['type'] == 'buy' else to_curr}"
-            f"&{'baseCurrency' if trans_type['type'] == 'buy' else 'currency'}Amount={monetization['effective_amount'] if direction == 'from' else ''}"
-            f"&{'currency' if trans_type['type'] == 'buy' else 'baseCurrency'}Amount={monetization['effective_amount'] if direction == 'to' else ''}"
+            f"&{'baseCurrency' if trans_type['type'] == 'buy' else 'currency'}Amount={monetization['net_amount'] if direction == 'from' else ''}"
+            f"&{'currency' if trans_type['type'] == 'buy' else 'baseCurrency'}Amount={monetization['net_amount'] if direction == 'to' else ''}"
             f"{f'&language={locale}' if locale else ''}"
         )
         
@@ -362,7 +369,9 @@ def process_moonpay_transaction(
             'transaction_type': trans_type['type'],
             'message': "MoonPay widget URL generated successfully",
             'status_code': HTTPStatusCode.SUCCESS,
-            'fee_details': monetization['fee_details']
+            'fee_details': monetization['fee_details'],
+            'total_amount': monetization['total_amount'],  # Total amount user needs to pay (amount + fees)
+            'net_amount': monetization['net_amount']  # Actual transaction amount
         }
         
     except Exception as e:
