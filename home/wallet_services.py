@@ -682,23 +682,17 @@ def _execute_solana_transaction(
             print("Private key content", private_key)
             
             if private_key.startswith('[') and private_key.endswith(']'):
-                # Array format
                 key_bytes = bytes(eval(private_key))
             elif len(private_key) == 64:
-                # Hex format (32 bytes = 64 hex characters)
                 key_bytes = bytes.fromhex(private_key)
             elif len(private_key) == 128:
-                # Longer hex format (64 bytes = 128 hex characters, need first 32)
                 key_bytes = bytes.fromhex(private_key)[:32]
             else:
-                # Base58 format
                 try:
                     key_bytes = base58.b58decode(private_key)
                 except Exception:
-                    # If base58 decode fails, try hex decode as fallback
                     key_bytes = bytes.fromhex(private_key)
             
-            # Ensure we have exactly 32 bytes for the private key
             if len(key_bytes) > 32:
                 key_bytes = key_bytes[:32]
             elif len(key_bytes) < 32:
@@ -716,9 +710,7 @@ def _execute_solana_transaction(
                 "quote_data": quote_data
             }
 
-        # Extract and process transaction data
         try:
-            # LiFi should provide a serialized transaction
             serialized_tx = None
             
             if 'data' in transaction_request:
