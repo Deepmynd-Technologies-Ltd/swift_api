@@ -272,7 +272,7 @@ def send_crypto_transaction(symbol: Union[Symbols, str], req: SendTransactionDTO
     return handle_wallet_response(handlers.get(symbol))
 
 def get_swap_quote(from_symbol: str, to_symbol: str, amount: Union[str, float, Decimal], 
-                  from_address: str, to_address: Optional[str] = None, slippage: float = 0.5) -> Dict:
+                  from_address: str, to_address: Optional[str] = None, order: str = "RECOMMENDED", slippage: float = 0.5) -> Dict:
     """Get a quote for swapping tokens using LiFi, with monetization applied."""
     try:
         # Convert amount to Decimal if it's not already
