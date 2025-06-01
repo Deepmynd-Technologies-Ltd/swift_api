@@ -16,8 +16,9 @@ from helper.send_transaction.send_sol import send_sol
 from helper.send_transaction.send_bnb import send_bnb
 from helper.send_transaction.send_btc import send_btc
 from helper.send_transaction.send_eth import send_eth
-from helper.send_transaction.send_usdt import send_usdt_bep20
+from helper.send_transaction.send_usdt import send_usdt
 from helper.send_transaction.send_tron import send_trx
+from helper.send_transaction.send_doge import send_doge
 
 from helper.wallet_balance import (
     get_bnb_balance_and_history, get_btc_balance_and_history,
@@ -202,7 +203,7 @@ def send_crypto_transaction(symbol: Union[Symbols, str], req: SendTransactionDTO
         Symbols.BTC: lambda: send_btc(req, symbol),
         Symbols.ETH: lambda: send_eth(req),
         Symbols.SOL: lambda: send_sol(req),
-        Symbols.DODGE: lambda: send_btc(req, symbol),
+        Symbols.DODGE: lambda: send_doge(req, symbol),
         Symbols.BNB: lambda: send_bnb(req),
         Symbols.TRON: lambda: send_tron(req),
         Symbols.USDT: lambda: send_usdt(req),

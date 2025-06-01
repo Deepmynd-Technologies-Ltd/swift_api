@@ -1,98 +1,53 @@
 from solders.keypair import Keypair
-from solders.transaction import Transaction
 from solders.pubkey import Pubkey
-from solders.message import Message
+from solders.system_program import TransferParams, transfer
 from solana.rpc.api import Client
-import solders
-import base58
+from solders.transaction import Transaction
+import binascii
 from home.wallet_schema import SendTransactionDTO
+
+SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com"
 
 def send_sol(req: SendTransactionDTO):
     try:
-        client = Client("https://api.mainnet-beta.solana.com")
+        solana_client = Client(SOLANA_RPC_URL)
         
-        private_key_bytes = None
-        
-        # First, try to decode as base58 (common Solana format for keypairs)
-        try:
-            print(f"Original private_key input: {req.private_key}")
+        # Convert hex private key to bytes
+        hex_private_key = req.private_key
+        if len(hex_private_key) == 64:  # Raw hex without 0x prefix
+            private_key_bytes = binascii.unhexlify(hex_private_key)
+        elif hex_private_key.startswith("0x") and len(hex_private_key) == 66:  # With 0x prefix
+            private_key_bytes = binascii.unhexlify(hex_private_key[2:])
+        else:
+            raise ValueError("Invalid private key format - expected 64-character hex string")
             
-            # Try base58 decode first
-            private_key_bytes = base58.b58decode(req.private_key)
-            print(f"Base58 decoded length: {len(private_key_bytes)}")
-            print(f"Base58 decoded bytes (hex): {private_key_bytes.hex()}")
-            
-            if len(private_key_bytes) == 64:
-                sender_keypair = Keypair.from_bytes(private_key_bytes)
-            elif len(private_key_bytes) == 32:
-                sender_keypair = Keypair.from_seed(private_key_bytes)
-            else:
-                # Print the problematic sequence here:
-                print(f"Unexpected base58 decoded length: {len(private_key_bytes)}")
-                print(f"Decoded bytes: {private_key_bytes}")
-                raise ValueError(f"Invalid base58 key length: {len(private_key_bytes)} bytes")
-        except Exception as base58_err:
-            print(f"Base58 decode failed or invalid length: {base58_err}")
-            # Try hex decode fallback
-            try:
-                private_key_bytes = bytes.fromhex(req.private_key)
-                print(f"Hex decoded length: {len(private_key_bytes)}")
-                print(f"Hex decoded bytes (hex): {private_key_bytes.hex()}")
-                
-                if len(private_key_bytes) == 64:
-                    sender_keypair = Keypair.from_bytes(private_key_bytes)
-                elif len(private_key_bytes) == 32:
-                    sender_keypair = Keypair.from_seed(private_key_bytes)
-                else:
-                    print(f"Unexpected hex decoded length: {len(private_key_bytes)}")
-                    print(f"Decoded bytes: {private_key_bytes}")
-                    raise ValueError(f"Invalid hex key length: {len(private_key_bytes)} bytes")
-            except Exception as hex_err:
-                print(f"Hex decode failed: {hex_err}")
-                raise ValueError("Invalid private key format - must be base58 or hex")
-
-
-
+        # Create keypair from private key bytes (32 bytes)
+        sender_keypair = Keypair.from_seed(private_key_bytes)  # Changed from from_bytes()
         
-        # Verify that the derived public key matches the from_address
-        derived_address = str(sender_keypair.pubkey())
-        if derived_address != req.from_address:
-            raise ValueError(f"Address mismatch. Derived: {derived_address}, Expected: {req.from_address}")
+        # Debug output
+        print("Sender address:", sender_keypair.pubkey())
+        print("Private key length:", len(private_key_bytes))
         
-        # Get recent blockhash
-        recent_blockhash = client.get_latest_blockhash().value.blockhash
+        # Check balance
+        balance = solana_client.get_balance(sender_keypair.pubkey()).value
+        if balance < req.amount * 10**9:
+            raise RuntimeError("Insufficient balance")
         
-        # Create transfer instruction
-        print(f"Preparing to transfer {req.amount} SOL from {req.from_address} to {req.to_address}")
-        transfer_ix = solders.system_program.transfer(
-            solders.system_program.TransferParams(
-                from_pubkey=Pubkey(req.from_address),
-                to_pubkey=Pubkey(req.to_address),
-                lamports=int(req.amount * 10**9), 
+        # Build transaction
+        txn = Transaction().add(
+            transfer(
+                TransferParams(
+                    from_pubkey=sender_keypair.pubkey(),
+                    to_pubkey=Pubkey.from_string(req.to_address),
+                    lamports=int(req.amount * 10**9)
+                )
             )
         )
         
-        # Build and sign transaction
-        message = Message([transfer_ix])
-        transaction = Transaction(
-            message=message,
-            recent_blockhash=recent_blockhash,
-        )
-        transaction.sign([sender_keypair])
-        
-        # Send transaction
-        response = client.send_transaction(transaction)
-        
-        return {
-            "success": True,
-            "result": response.to_json(),
-            "status_code": 200,
-            "tx_hash": str(response.value)
-        }
-        
+        # Sign and send
+        txn.sign(sender_keypair)
+        tx_hash = solana_client.send_transaction(txn).value
+        print(f"Transaction sent: https://solscan.io/tx/{tx_hash}")
+        return tx_hash
     except Exception as ex:
-        return {
-            "success": False,
-            "error": str(ex),
-            "status_code": 400
-        }
+        raise RuntimeError(f"SOL transfer failed: {ex}")
