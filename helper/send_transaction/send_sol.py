@@ -50,4 +50,4 @@ def send_sol(req: SendTransactionDTO):
         print(f"Transaction sent: https://solscan.io/tx/{tx_hash}")
         return tx_hash
     except Exception as ex:
-        raise RuntimeError(f"SOL transfer failed: {ex}")
+        raise RuntimeError(f"{ex}")

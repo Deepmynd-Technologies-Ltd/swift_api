@@ -16,7 +16,7 @@ def send_doge(req: SendTransactionDTO, coin_symbol="doge"):
         )
         return tx_hash
     except Exception as ex:
-        raise RuntimeError(f"DOGE transfer failed: {ex}")
+        raise RuntimeError(f"{ex}")
 
 def validate_coin(address, coin_symbol):
     try:

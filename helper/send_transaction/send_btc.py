@@ -17,7 +17,7 @@ def send_btc(req: SendTransactionDTO, coin_symbol="btc"):
     print(tx_details)
     return tx_hash
   except Exception as ex:
-    raise RuntimeError(f"BTC transfer failed: {ex}")
+    raise RuntimeError(f"{ex}")
 
 def validate_coin(address, coin_symbol):
   try:
