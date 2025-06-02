@@ -34,31 +34,18 @@ Built for developers and financial institutions seeking reliable blockchain inte
 ## 🔗 API Providers
 We integrate with industry-leading blockchain infrastructure providers:
 
-### 🔗 Blockchain Nodes
-| Provider | Logo | Description | Documentation |
-|----------|------|-------------|---------------|
-| Binance Smart Chain | ![BSC](https://bin.bnbstatic.com/static/images/common/favicon.ico) | BNB transactions and queries | [API Docs](https://docs.binance.org/) |
-| Bitcoin | ![BTC](https://bitcoin.org/favicon.ico) | BTC blockchain access | [API Docs](https://www.blockcypher.com/dev/) |
-| Ethereum | ![ETH](https://www.ethereum.org/images/logos/ETHEREUM-ICON_Black.png) | ETH node services | [API Docs](https://infura.io/docs) |
-| Solana | ![SOL](https://solana.com/favicon.ico) | High-speed SOL transactions | [API Docs](https://docs.solana.com/) |
+## 🔗 Integrated API Providers
 
-### 📈 Market Data
-| Provider | Coverage | Refresh Rate | Docs |
-|----------|----------|--------------|------|
-| CoinGecko | 10,000+ coins | Real-time | [API Docs](https://www.coingecko.com/api) |
-
-### 🔄 Swap Services
-| Provider | Chains Supported | Features | Docs |
-|----------|------------------|----------|------|
-| LI.FI | 15+ | Cross-chain swaps | [API Docs](https://li.quest/) |
-
-### 💱 Fiat Gateways
-| Provider | Regions | Currencies | Docs |
-|----------|---------|------------|------|
-| Transak | 100+ | 50+ | [API DOcs](https://transak.com/) |
-| Paybis | 80+ | 30+ | [API Docs](https://paybis.com/) |
-
----
+| Category       | Provider | Logo | Description | Documentation |
+|---------------|----------|------|-------------|---------------|
+| **Blockchain Nodes** | Binance Smart Chain | ![BSC](https://bin.bnbstatic.com/static/images/common/favicon.ico) | BNB transactions and queries | [API Docs](https://docs.binance.org/) |
+| | Bitcoin | ![BTC](https://bitcoin.org/favicon.ico) | BTC blockchain access | [API Docs](https://www.blockcypher.com/dev/) |
+| | Ethereum | ![ETH](https://cryptologos.cc/logos/ethereum-eth-logo.png?v=025) | ETH node services | [API Docs](https://infura.io/docs) |
+| | Solana | ![SOL](https://solana.com/favicon.ico) | High-speed SOL transactions | [API Docs](https://docs.solana.com/) |
+| **Market Data** | CoinGecko | ![CG](https://static.coingecko.com/s/coingecko-logo-8903d34ce19ca4be1c81f0db30e924154750d208683fad7ae6f2ce06c76d0a56.png) | 10,000+ coins, real-time data | [API Docs](https://www.coingecko.com/api) |
+| **Swap Services** | LI.FI | ![LIFI](https://li.quest/icons/icon-48x48.png) | Cross-chain swaps (15+ chains) | [API Docs](https://li.quest/) |
+| **Fiat Gateways** | Transak | ![Transak](https://transak.com/images/favicon-32x32.png) | 100+ regions, 50+ currencies | [API Docs](https://transak.com/) |
+| | Paybis | ![Paybis](https://paybis.com/favicon.ico) | 80+ regions, 30+ currencies | [API Docs](https://paybis.com/) |
 
 ## 🏗 Project Structure
 
@@ -148,34 +135,13 @@ python manage.py runserver
 You can now access the API at `http://127.0.0.1:8000/
 ```
 
-## Run with production settings
-```
-DJANGO_SETTINGS_MODULE=swift_api.settings.prod python manage.py runserver
-📡 API Endpoints
-Wallet Services
-Endpoint	Method	Description
-/api/v1/wallets/	GET	List all wallets
-/api/v1/wallets/{currency}/balance/	GET	Get balance
-Transaction Services
-Endpoint	Method	Description
-/api/v1/tx/send/	POST	Send cryptocurrency
-/api/v1/tx/history/	GET	Transaction history
-🧪 Testing
-bash
-# Run all tests
-python manage.py test
-
-# Run specific app tests
-python manage.py test core.tests.WalletTests
-```
-
-📜 License
+## 📜 License
 This project is licensed under Deepmynd Technologies Ltd. Proprietary Software License.
 
-📬 Contact
+## 📬 Contact
 Technical Support:
 📧 api-support@deepmynd.tech
 ☎️ +23495551234567
 
-Business Inquiries:
-📧 partnerships@deepmynd.tech
+## Business Inquiries:
+📧 info@swiftaza.io
