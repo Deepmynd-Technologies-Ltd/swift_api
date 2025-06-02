@@ -11,43 +11,43 @@ SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com"
 def send_sol(req: SendTransactionDTO):
     try:
         solana_client = Client(SOLANA_RPC_URL)
-        
-        # Convert hex private key to bytes
+
+        # Decode private key (64-byte Solana secret key expected)
         hex_private_key = req.private_key
-        if len(hex_private_key) == 64:  # Raw hex without 0x prefix
-            private_key_bytes = binascii.unhexlify(hex_private_key)
-        elif hex_private_key.startswith("0x") and len(hex_private_key) == 66:  # With 0x prefix
-            private_key_bytes = binascii.unhexlify(hex_private_key[2:])
-        else:
-            raise ValueError("Invalid private key format - expected 64-character hex string")
-            
-        # Create keypair from private key bytes (32 bytes)
-        sender_keypair = Keypair.from_seed(private_key_bytes)  # Changed from from_bytes()
-        
-        # Debug output
-        print("Sender address:", sender_keypair.pubkey())
-        print("Private key length:", len(private_key_bytes))
-        
-        # Check balance
-        balance = solana_client.get_balance(sender_keypair.pubkey()).value
-        if balance < req.amount * 10**9:
+        if hex_private_key.startswith("0x"):
+            hex_private_key = hex_private_key[2:]
+        private_key_bytes = binascii.unhexlify(hex_private_key)
+
+        if len(private_key_bytes) != 64:
+            raise ValueError("Expected 64-byte Solana secret key (128 hex characters)")
+
+        sender_keypair = Keypair.from_bytes(private_key_bytes)
+        sender_pubkey = sender_keypair.pubkey()
+
+        # Check balance in lamports (1 SOL = 1e9 lamports)
+        balance = solana_client.get_balance(sender_pubkey).value
+        required = int(req.amount * 10**9)
+        if balance < required:
             raise RuntimeError("Insufficient balance")
-        
-        # Build transaction
-        txn = Transaction().add(
+
+        # Build and sign transaction
+        recent_blockhash = solana_client.get_latest_blockhash().value.blockhash
+        txn = Transaction(recent_blockhash=recent_blockhash).add(
             transfer(
                 TransferParams(
-                    from_pubkey=sender_keypair.pubkey(),
+                    from_pubkey=sender_pubkey,
                     to_pubkey=Pubkey.from_string(req.to_address),
-                    lamports=int(req.amount * 10**9)
+                    lamports=required
                 )
             )
         )
-        
-        # Sign and send
-        txn.sign(sender_keypair)
-        tx_hash = solana_client.send_transaction(txn).value
-        print(f"Transaction sent: https://solscan.io/tx/{tx_hash}")
-        return tx_hash
+
+        # Send transaction
+        tx_hash = solana_client.send_transaction(txn, sender_keypair).value
+        return {
+            "tx_hash": tx_hash,
+            "explorer": f"https://solscan.io/tx/{tx_hash}"
+        }
+
     except Exception as ex:
-        raise RuntimeError(f"{ex}")
+        raise RuntimeError(f"SOL transfer failed: {ex}")
