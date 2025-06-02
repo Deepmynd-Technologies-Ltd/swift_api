@@ -34,8 +34,6 @@ Built for developers and financial institutions seeking reliable blockchain inte
 ## 🔗 API Providers
 We integrate with industry-leading blockchain infrastructure providers:
 
-## 🔗 Integrated API Providers
-
 | Category          | Provider   | Usage Description | Documentation |
 |-------------------|------------|-------------------|---------------|
 | **Blockchain Nodes** | Binance Smart Chain | BNB transactions and queries | [BSC Docs](https://docs.binance.org/) |
