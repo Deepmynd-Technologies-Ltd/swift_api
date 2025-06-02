@@ -144,40 +144,8 @@ We welcome contributions to the project! To contribute, follow these steps:
 5. **Create a pull request.
 
 ## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Company that License us - see the [LICENSE](LICENSE) file for details.
 
 ## Contact
-If you have any questions or need further assistance, feel free to contact the project maintainers at [email@example.com].
+If you have any questions or need further assistance, feel free to contact the project maintainers at [swafaza.info.io].
 
----
-
-### Additional Documentation
-
-#### Launch Screen Assets
-You can customize the launch screen with your own desired assets by replacing the image files in the `ios/Runner/Assets.xcassets/LaunchImage.imageset` directory.
-
-You can also do it by opening your Flutter project's Xcode project with `open ios/Runner.xcworkspace`, selecting `Runner/Assets.xcassets` in the Project Navigator and dropping in the desired images.
-
-#### DevTools Options
-This file stores settings for Dart & Flutter DevTools.
-
-- **File:** `devtools_options.yaml`
-- **Documentation:** [DevTools Configuration](https://docs.flutter.dev/tools/devtools/extensions#configure-extension-enablement-states)
-
-#### Project Configuration
-- **File:** `pubspec.yaml`
-- **Description:** A new Flutter project.
-- **Version:** 1.0.0+2
-- **Environment:**
-  - `sdk: ^3.5.1`
-
-#### Testing Files
-- **iOS Runner Tests:**
-  - **File:** `ios/RunnerTests/RunnerTests.swift`
-  - **Description:** Add tests for the Runner application.
-  - **More Information:** [Using XCTest](https://developer.apple.com/documentation/xctest)
-  
-- **macOS Runner Tests:**
-  - **File:** `macos/RunnerTests/RunnerTests.swift`
-  - **Description:** Add tests for the Runner application.
-  - **More Information:** [Using XCTest](https://developer.apple.com/documentation/xctest)
