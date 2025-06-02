@@ -36,16 +36,21 @@ We integrate with industry-leading blockchain infrastructure providers:
 
 ## 🔗 Integrated API Providers
 
-| Category       | Provider | Logo | Description | Documentation |
-|---------------|----------|------|-------------|---------------|
-| **Blockchain Nodes** | Binance Smart Chain | ![BSC](https://bin.bnbstatic.com/static/images/common/favicon.ico) | BNB transactions and queries | [API Docs](https://docs.binance.org/) |
-| | Bitcoin | ![BTC](https://bitcoin.org/favicon.ico) | BTC blockchain access | [API Docs](https://www.blockcypher.com/dev/) |
-| | Ethereum | ![ETH](https://cryptologos.cc/logos/ethereum-eth-logo.png?v=025) | ETH node services | [API Docs](https://infura.io/docs) |
-| | Solana | ![SOL](https://solana.com/favicon.ico) | High-speed SOL transactions | [API Docs](https://docs.solana.com/) |
-| **Market Data** | CoinGecko | ![CG](https://static.coingecko.com/s/coingecko-logo-8903d34ce19ca4be1c81f0db30e924154750d208683fad7ae6f2ce06c76d0a56.png) | 10,000+ coins, real-time data | [API Docs](https://www.coingecko.com/api) |
-| **Swap Services** | LI.FI | ![LIFI](https://li.quest/icons/icon-48x48.png) | Cross-chain swaps (15+ chains) | [API Docs](https://li.quest/) |
-| **Fiat Gateways** | Transak | ![Transak](https://transak.com/images/favicon-32x32.png) | 100+ regions, 50+ currencies | [API Docs](https://transak.com/) |
-| | Paybis | ![Paybis](https://paybis.com/favicon.ico) | 80+ regions, 30+ currencies | [API Docs](https://paybis.com/) |
+| Category          | Provider   | Usage Description | Documentation |
+|-------------------|------------|-------------------|---------------|
+| **Blockchain Nodes** | Binance Smart Chain | BNB transactions and queries | [BSC Docs](https://docs.binance.org/) |
+| | Bitcoin Core | BTC transactions and queries | [Blockcypher Docs](https://www.blockcypher.com/dev/) |
+| | Ethereum | ETH transactions and queries | [Infura Docs](https://infura.io/docs) |
+| | Solana | SOL transactions and queries | [Solana Docs](https://docs.solana.com/) |
+| | Dogecoin | DOGE transactions and queries | [Dogecoin Docs](https://dogechain.info/) |
+| **Market Data** | CoinGecko | Real-time cryptocurrency prices and market data | [CoinGecko API](https://www.coingecko.com/en/api/documentation) |
+| **Transaction Services** | BscScan | BNB transaction processing | [BscScan API](https://bscscan.com/apis) |
+| | Etherscan | ETH transaction processing | [Etherscan API](https://etherscan.io/apis) |
+| | Blockchain.com | BTC transaction processing | [Blockchain.com API](https://www.blockchain.com/api) |
+| **Swap Services** | LI.FI | Cross-chain token swaps | [LI.FI Docs](https://docs.li.fi/) |
+| **Fiat On/Off Ramps** | Transak | Buy/Sell crypto with fiat | [Transak API](https://docs.transak.com/) |
+| | Paybis | Buy/Sell crypto with fiat | [Paybis API](https://developers.paybis.com/) |
+
 
 ## 🏗 Project Structure
 
