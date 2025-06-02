@@ -94,39 +94,39 @@ Redis (for caching)
 
 Setup
 bash
-# 1. Clone repository
+### 1. Clone repository
 git clone https://github.com/Deepmynd-Technologies-Ltd/swift_api.git
 cd swift_api
 
-# 2. Setup environment
+## 2. Setup environment
 python -m venv .venv
 source .venv/bin/activate
 
-# 3. Install dependencies
+## 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Configure environment
+## 4. Configure environment
 cp .env.example .env
-# Edit .env with your credentials
+## Edit .env with your credentials
 
-# 5. Run migrations
+## 5. Run migrations
 python manage.py migrate
 🛠 Configuration
 Key environment variables:
 
 ini
-# Database
+## Database
 DATABASE_URL=postgres://user:pass@localhost:5432/swift_api
 
-# Blockchain Providers
+## Blockchain Providers
 BSC_NODE_URL=https://bsc-dataseed.binance.org/
 INFURA_API_KEY=your_key_here
 
-# Security
+## Security
 SECRET_KEY=your_django_secret
 🏃‍♂️ Usage
 bash
-# Start development server
+## Start development server
 To run the development server, use the following command:
 python manage.py runserver
 
@@ -143,7 +143,7 @@ Configuration settings for the project are located in `swift_api/settings.py`. M
 - `STATICFILES_DIRS`
 
 
-# Run with production settings
+## Run with production settings
 DJANGO_SETTINGS_MODULE=swift_api.settings.prod python manage.py runserver
 📡 API Endpoints
 Wallet Services
