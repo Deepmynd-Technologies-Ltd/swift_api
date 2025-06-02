@@ -2,18 +2,42 @@
 
 ## Table of Contents
 1. [Introduction](#introduction)
-2. [Project Structure](#project-structure)
-3. [Installation](#installation)
-4. [Configuration](#configuration)
-5. [Usage](#usage)
-6. [API Endpoints](#api-endpoints)
-7. [Testing](#testing)
-8. [Contributing](#contributing)
-9. [License](#license)
-10. [Contact](#contact)
+2. [API Providers](#api-providers)
+3. [Project Structure](#project-structure)
+4. [Installation](#installation)
+5. [Configuration](#configuration)
+6. [Usage](#usage)
+7. [API Endpoints](#api-endpoints)
+8. [Testing](#testing)
+9. [Contributing](#contributing)
+10. [License](#license)
+11. [Contact](#contact)
 
 ## Introduction
-Welcome to the `swift_api` repository! This project is a Python/Django-based API designed for [brief description of what the API does]. This document aims to provide all the necessary information for new contributors to get started with the project.
+Welcome to the `swift_api` repository! This project is a Python/Django-based API designed for cryptocurrency transactions, wallet management, and market data. This document provides all necessary information for new contributors and partners.
+
+## API Providers
+We partner with leading blockchain and financial service providers to deliver secure and reliable cryptocurrency services:
+
+| Category          | Provider   | Usage Description | Documentation |
+|-------------------|------------|-------------------|---------------|
+| **Blockchain Nodes** | Binance Smart Chain | BNB transactions and queries | [BSC Docs](https://docs.binance.org/) |
+| | Bitcoin Core | BTC transactions and queries | [Blockcypher Docs](https://www.blockcypher.com/dev/) |
+| | Ethereum | ETH transactions and queries | [Infura Docs](https://infura.io/docs) |
+| | Solana | SOL transactions and queries | [Solana Docs](https://docs.solana.com/) |
+| | Dogecoin | DOGE transactions and queries | [Dogecoin Docs](https://dogechain.info/) |
+| **Market Data** | CoinGecko | Real-time cryptocurrency prices and market data | [CoinGecko API](https://www.coingecko.com/en/api/documentation) |
+| **Transaction Services** | BscScan | BNB transaction processing | [BscScan API](https://bscscan.com/apis) |
+| | Etherscan | ETH transaction processing | [Etherscan API](https://etherscan.io/apis) |
+| | Blockchain.com | BTC transaction processing | [Blockchain.com API](https://www.blockchain.com/api) |
+| **Swap Services** | LI.FI | Cross-chain token swaps | [LI.FI Docs](https://docs.li.fi/) |
+| **Fiat On/Off Ramps** | Transak | Buy/Sell crypto with fiat | [Transak API](https://docs.transak.com/) |
+| | Paybis | Buy/Sell crypto with fiat | [Paybis API](https://developers.paybis.com/) |
+
+## Project Structure
+Here's an overview of the project structure:
+
+
 
 ## Project Structure
 Here's an overview of the project structure:
@@ -40,24 +64,25 @@ swift_api/
 └── ...
 ```
 
+
 ### Description of Key Files and Directories
 
-- **manage.py**: A command-line utility that lets you interact with this Django project in various ways.
-- **swift_api/**: The main Django project directory.
-  - **__init__.py**: An empty file that tells Python that this directory should be considered a package.
-  - **settings.py**: Configuration for the Django project, including database settings, installed apps, middleware, and more.
-  - **urls.py**: The URL declarations for this Django project; a "table of contents" of your Django-powered site.
-  - **wsgi.py**: An entry-point for WSGI-compatible web servers to serve your project.
-  - **asgi.py**: An entry-point for ASGI-compatible web servers to serve your project.
-- **app_name/**: Replace with your app's name. This directory contains the files for your Django app.
-  - **migrations/**: Database migrations for the app.
-  - **__init__.py**: An empty file that tells Python that this directory should be considered a package.
-  - **admin.py**: Configuration for the Django admin interface.
-  - **apps.py**: Configuration for the app.
-  - **models.py**: The data models for the app.
-  - **tests.py**: Unit tests for the app.
-  - **views.py**: The views for the app.
-- **requirements.txt**: A list of Python packages that are required for this project.
+- **manage.py**: Command-line utility for Django project interaction
+- **swift_api/**: Main project directory containing configuration files
+- **app_name/**: Application directory with models, views, and tests
+- **requirements.txt**: Python package dependencies
+
+## Installation
+To get started with the project:
+
+```bash
+git clone https://github.com/Deepmynd-Technologies-Ltd/swift_api.git
+cd swift_api
+python3 -m venv env
+source env/bin/activate
+pip install -r requirements.txt
+python manage.py migrate
+```
 
 ## Installation
 To get started with the project, follow these steps:
