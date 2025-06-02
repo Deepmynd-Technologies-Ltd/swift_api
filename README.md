@@ -37,26 +37,26 @@ We integrate with industry-leading blockchain infrastructure providers:
 ### 🔗 Blockchain Nodes
 | Provider | Logo | Description | Documentation |
 |----------|------|-------------|---------------|
-| Binance Smart Chain | ![BSC](https://bin.bnbstatic.com/static/images/common/favicon.ico) | BNB transactions and queries | [Docs](https://docs.binance.org/) |
-| Bitcoin | ![BTC](https://bitcoin.org/favicon.ico) | BTC blockchain access | [Docs](https://www.blockcypher.com/dev/) |
-| Ethereum | ![ETH](https://ethereum.org/favicon.ico) | ETH node services | [Docs](https://infura.io/docs) |
-| Solana | ![SOL](https://solana.com/favicon.ico) | High-speed SOL transactions | [Docs](https://docs.solana.com/) |
+| Binance Smart Chain | ![BSC](https://bin.bnbstatic.com/static/images/common/favicon.ico) | BNB transactions and queries | [API Docs](https://docs.binance.org/) |
+| Bitcoin | ![BTC](https://bitcoin.org/favicon.ico) | BTC blockchain access | [API Docs](https://www.blockcypher.com/dev/) |
+| Ethereum | ![ETH](https://www.ethereum.org/images/logos/ETHEREUM-ICON_Black.png) | ETH node services | [API Docs](https://infura.io/docs) |
+| Solana | ![SOL](https://solana.com/favicon.ico) | High-speed SOL transactions | [API Docs](https://docs.solana.com/) |
 
 ### 📈 Market Data
 | Provider | Coverage | Refresh Rate | Docs |
 |----------|----------|--------------|------|
-| CoinGecko | 10,000+ coins | Real-time | [API](https://www.coingecko.com/api) |
+| CoinGecko | 10,000+ coins | Real-time | [API Docs](https://www.coingecko.com/api) |
 
 ### 🔄 Swap Services
 | Provider | Chains Supported | Features | Docs |
 |----------|------------------|----------|------|
-| LI.FI | 15+ | Cross-chain swaps | [Docs](https://li.quest/) |
+| LI.FI | 15+ | Cross-chain swaps | [API Docs](https://li.quest/) |
 
 ### 💱 Fiat Gateways
 | Provider | Regions | Currencies | Docs |
 |----------|---------|------------|------|
-| Transak | 100+ | 50+ | [API](https://transak.com/) |
-| Paybis | 80+ | 30+ | [API](https://paybis.com/) |
+| Transak | 100+ | 50+ | [API DOcs](https://transak.com/) |
+| Paybis | 80+ | 30+ | [API Docs](https://paybis.com/) |
 
 ---
 
