@@ -39,7 +39,7 @@ We integrate with industry-leading blockchain infrastructure providers:
 | **Blockchain Nodes** | Binance Smart Chain | BNB transactions and queries | [BSC Docs](https://docs.binance.org/) |
 | | Bitcoin Core | BTC/DOGE transactions and queries | [Blockcypher Docs](https://www.blockcypher.com/dev/) |
 | | Ethereum | ETH transactions and queries | [Infura Docs](https://infura.io/docs) |
-| | Solana | SOL transactions and queries | [Solana Docs](https://api.mainnet-beta.solana.com/) |
+| | Solana | SOL transactions and queries | [Solana Docs](https://explorer.solana.com/) |
 | | Dogecoin | DOGE transactions and queries | [Dogecoin Docs](https://dogechain.info/) |
 | **Market Data** | CoinGecko | Real-time cryptocurrency prices and market data | [CoinGecko API](https://www.coingecko.com/en/api/documentation) |
 | **Transaction Services** | BscScan | BNB transaction processing | [BscScan API](https://bscscan.com/apis) |
