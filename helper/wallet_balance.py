@@ -122,12 +122,19 @@ def get_tron_balance(address):
 #     url = f"https://api.bscscan.com/api?module=account&action=balance&contractaddress=0xdAC17F958D2ee523a2206206994597C13D831ec7&address={address}&apikey={settings.BNB_API_KEY}"
 #     response = requests.get(url)
 #     return int(response.json()["result"]) / 1e6  # Assuming 6 decimals for USDT
+
 def get_usdt_balance(address):
     # Connect to BSC node
-    infura_url = 'https://mainnet.infura.io/v3/'+settings.INFURA
-    web3 = Web3(Web3.HTTPProvider(infura_url))
+    rpc_url = 'https://bsc-dataseed.binance.org/'  # Binance Smart Chain mainnet
+    web3 = Web3(Web3.HTTPProvider(rpc_url))
 
-    # USDT Contract ABI (only minimal ABI for balanceOf)
+    # Ensure the address is checksummed
+    checksum_address = Web3.to_checksum_address(address)
+
+    # USDT BEP20 Contract address (BSC)
+    usdt_bep20_contract = "0x55d398326f99059fF775485246999027B3197955"
+
+    # Minimal ABI for balanceOf
     abi = [
         {
             "constant": True,
@@ -138,9 +145,12 @@ def get_usdt_balance(address):
         }
     ]
 
-    # Contract instance
-    token_contract = web3.eth.contract(address=Web3.to_checksum_address("0xdAC17F958D2ee523a2206206994597C13D831ec7"), abi=abi)
+    # Create contract instance
+    token_contract = web3.eth.contract(address=Web3.to_checksum_address(usdt_bep20_contract), abi=abi)
 
-    # Get balance
-    balance = token_contract.functions.balanceOf(Web3.to_checksum_address(address)).call()
-    return web3.from_wei(balance, 'ether')  # Convert Wei to USDT
+    # Call balanceOf function
+    raw_balance = token_contract.functions.balanceOf(checksum_address).call()
+
+    # Convert using correct decimal for USDT (6)
+    readable_balance = raw_balance / (10 ** 18)
+    return readable_balance
