@@ -308,7 +308,7 @@ def get_swap_quote(
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json"
-        }
+        }Received
         
         # Add API key if configured
         if hasattr(settings, 'LIFI_API_KEY') and settings.LIFI_API_KEY:
@@ -932,7 +932,7 @@ def _execute_evm_transaction(
         # Sign and send the transaction
         try:
             signed_tx = w3.eth.account.sign_transaction(tx_params, private_key)
-            tx_hash = w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+            tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
             tx_hash_hex = tx_hash.hex()
         except Exception as tx_error:
             return {
