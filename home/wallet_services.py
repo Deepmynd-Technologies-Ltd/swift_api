@@ -308,7 +308,7 @@ def get_swap_quote(
         headers = {
             "Accept": "application/json",
             "Content-Type": "application/json"
-        }Received
+        }
         
         # Add API key if configured
         if hasattr(settings, 'LIFI_API_KEY') and settings.LIFI_API_KEY:
